@@ -1,26 +1,23 @@
 import sys 
 sys.path.insert(0, "./")
 import matplotlib.pyplot as plt
-from region_funcs_SST import generate_regions
+from region_funcs import generate_regions
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
-import matplotlib.pyplot as plt
 import cartopy.mpl.ticker as cticker
 import matplotlib.ticker as mticker
 import xarray as xr
 
-time_coder = xr.coders.CFDatetimeCoder(use_cftime=True)
+#time_coder = xr.coders.CFDatetimeCoder(use_cftime=True)
 
-ds = xr.open_dataset("SST_ltmm_NAtl_subbasins.nc")
-print(ds)
+#ds = xr.open_dataset("SST_ltmm_NAtl_subbasins.nc")
+#print(ds)
 
 fpaths = [
-    "SST_ltmm_NAtl_subbasins.nc"
+    "SST_mon_mean_anom.nc"
 ]
 
-da_region, reconstructed = generate_regions(fpaths, nRegions = 3, nIter = 10)
-
-#print(da_region)
+da_region, reconstructed = generate_regions(fpaths, nRegions = 10, nIter = 5)
 
 # create map with projection of continents
 fig = plt.figure(figsize=(10, 6))
@@ -53,6 +50,6 @@ gl.ylocator = mticker.MultipleLocator(10)
 ax.coastlines()
 
 # format and save
-plt.title("SST Long Term Monthly Mean in North Atlantic (1991-2020) (3 regions, sub-basin)")
-#plt.savefig("./images/region_generation/SST_ltmm_NAtlantic_3regions_subbasin.png")
-#plt.show()
+plt.title("SST Monthly Mean Anomaly in North Atlantic (1850-2025) (10 regions, 1deg grid)")
+plt.savefig("./images/region_generation/SST_mon_mean_anom.png")
+plt.show()
