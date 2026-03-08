@@ -1,0 +1,16 @@
+# Ignore all NetCDF datasets
+*.nc
+
+# ignore the entire datasets folder
+datasets/
+
+# ignore !old folder
+!old/
+
+# Python cache / temp files
+__pycache__/
+*.pyc
+*.pyo
+
+# VS Code settings
+.vscode/
