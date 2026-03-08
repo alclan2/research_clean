@@ -7,10 +7,15 @@ datasets/
 # ignore !old folder
 !old/
 
-# Python cache / temp files
+# Ignore temporary Python files
 __pycache__/
-*.pyc
-*.pyo
+*.tmp
 
 # VS Code settings
 .vscode/
+
+# Ignore PNG images
+*.png
+
+# ignore images folders
+images/
