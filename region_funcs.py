@@ -44,11 +44,11 @@ def open_and_normalize_datasets(
         da_raw_arr.append(da)
 
         # !!!!!! check
-        print("----- DEBUG DA -----")
-        print(da)
-        print("dims:", da.dims)
-        print("coords:", da.coords)
-        print("--------------------")
+        #print("----- DEBUG DA -----")
+        #print(da)
+        #print("dims:", da.dims)
+        #print("coords:", da.coords)
+        #print("--------------------")
 
 
 

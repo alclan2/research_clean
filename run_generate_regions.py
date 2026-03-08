@@ -10,14 +10,14 @@ import xarray as xr
 
 #time_coder = xr.coders.CFDatetimeCoder(use_cftime=True)
 
-#ds = xr.open_dataset("SST_ltmm_NAtl_subbasins.nc")
+#ds = xr.open_dataset("SST_ltmm_NAtl_subbasins.nc", decode_times=time_coder)
 #print(ds)
 
 fpaths = [
-    "SST_mon_mean_anom.nc"
+    "SST_mon_mean_anom_subbasin.nc"
 ]
 
-da_region, reconstructed = generate_regions(fpaths, nRegions = 10, nIter = 5)
+da_region, reconstructed = generate_regions(fpaths, nRegions = 6, nIter = 5)
 
 # create map with projection of continents
 fig = plt.figure(figsize=(10, 6))
@@ -50,6 +50,6 @@ gl.ylocator = mticker.MultipleLocator(10)
 ax.coastlines()
 
 # format and save
-plt.title("SST Monthly Mean Anomaly in North Atlantic (1850-2025) (10 regions, 1deg grid)")
-plt.savefig("./images/region_generation/SST_mon_mean_anom.png")
+plt.title("SST Monthly Mean Anomaly in North Atlantic (1850-2025) (6 regions, sub-basin)")
+plt.savefig("./images/region_generation/SST_mon_mean_anom_6reg_subbasin.png")
 plt.show()
