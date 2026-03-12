@@ -123,7 +123,7 @@ sub_basins["geometry"] = sub_basins["geometry"].apply(shift_lon)
 
 # open COBE SST monthly mean file
 time_coder = xr.coders.CFDatetimeCoder(use_cftime=True)
-ds = xr.open_dataset(r"datasets\sst.mon.mean.nc", decode_times=time_coder)
+ds = xr.open_dataset(r"datasets\COBE2 SST\sst.mon.mean.nc", decode_times=time_coder)
 
 # filter to only SST variable
 sst = ds["sst"]
@@ -164,55 +164,45 @@ rolling_clim = sst_full.groupby("time.month").map(
 
 sst_anom = sst_filt - rolling_clim.sel(time=sst_filt.time)
 
-# check
-#print(sst_anom.groupby("time.month").mean("time").min(), sst_anom.groupby("time.month").mean("time").max())
-
 # save filtered datasets
-sst_anom.to_netcdf("SST_mon_mean_anom_moving_window.nc")
+#sst_anom.to_netcdf("SST_mon_mean_anom_moving_window.nc")
 
 ########################################################################################
 # now region mask for subbasin categorization for region generation
 
 # --- Load dataset ---
-#sst_ds = xr.open_dataset("SST_mon_mean_anom.nc", decode_times=True)
-#sst_var = "sst"  # variable name
+sst_ds = xr.open_dataset("SST_mon_mean_anom_moving_window.nc", decode_times=True)
+sst_var = "sst"  # variable name
 
 # --- Create sub-basin mask (lat, lon) ---
-#regions = regionmask.from_geopandas(sub_basins, names="sub_basin_name")
-#mask = regions.mask(sst_ds)  # lat, lon with basin IDs and NaN outside
+regions = regionmask.from_geopandas(sub_basins, names="sub_basin_name")
+mask = regions.mask(sst_ds)  # lat, lon with basin IDs and NaN outside
 
 # --- Fill NaNs if needed ---
-#mask_filled = mask.fillna(-1)
+mask_filled = mask.fillna(-1)
 
 # --- Add mask to dataset ---
-#sst_ds["sub_basin_id"] = mask_filled
-#sst_ds["sub_basin_id"].attrs["sub_basin_names"] = list(sub_basins["sub_basin_name"])
+sst_ds["sub_basin_id"] = mask_filled
+sst_ds["sub_basin_id"].attrs["sub_basin_names"] = list(sub_basins["sub_basin_name"])
 
 # Stack spatial dims
-#sst_stack = sst_ds[sst_var].stack(stacked_lat_lon=("lat", "lon"))
-#mask_stack = sst_ds["sub_basin_id"].stack(stacked_lat_lon=("lat", "lon"))
+sst_stack = sst_ds[sst_var].stack(stacked_lat_lon=("lat", "lon"))
+mask_stack = sst_ds["sub_basin_id"].stack(stacked_lat_lon=("lat", "lon"))
 
-# Compute mean for each sub-basin
-# Use groupby to get the mean for each sub-basin (per time)
-#sst_basin_mean = sst_stack.groupby(mask_stack).mean(dim="stacked_lat_lon", skipna=True)
+# Compute mean per sub-basin (excluding -1)
+sst_basin_mean = sst_stack.where(mask_stack != -1).groupby(mask_stack).mean(dim="stacked_lat_lon", skipna=True)
 
-# Broadcast the basin mean back to each grid point
-# Create a mapping from basin_id -> basin mean
-# mask_stack has shape (stacked_lat_lon,)
-# We can use xarray's indexing via groupby_bins trick
-
-#sst_basin_grid_stack = sst_stack.copy()  # same shape as stacked
-#for basin_id in np.unique(mask_stack.values[~np.isnan(mask_stack.values)]):
-#    # select grid points in this basin
-#    locs = mask_stack == basin_id
-#    # assign the mean to those grid points
-#    sst_basin_grid_stack.loc[dict(stacked_lat_lon=locs)] = sst_basin_mean.sel(sub_basin_id=basin_id)
+# Broadcast back to grid
+sst_basin_grid_stack = sst_stack.copy()
+for basin_id in np.unique(mask_stack.values[~np.isnan(mask_stack.values)]):
+    locs = mask_stack == basin_id
+    sst_basin_grid_stack.loc[dict(stacked_lat_lon=locs)] = sst_basin_mean.sel(sub_basin_id=basin_id)
 
 # Unstack to original lat/lon
-#sst_basin_grid = sst_basin_grid_stack.unstack("stacked_lat_lon")
+sst_basin_grid = sst_basin_grid_stack.unstack("stacked_lat_lon")
 
-# --- Mask out points outside sub-basins (sub_basin_id == -1) ---
-#sst_basin_grid = sst_basin_grid.where(sst_ds["sub_basin_id"] != -1)
+# Mask out points outside sub-basins
+sst_basin_grid = sst_basin_grid.where(sst_ds["sub_basin_id"] != -1)
 
 # save to netcdf
-#sst_basin_grid.to_netcdf("SST_mon_mean_anom_subbasin.nc")
+sst_basin_grid.to_netcdf("SST_mon_mean_anom_moving_window_subbasin.nc")

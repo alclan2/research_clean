@@ -14,7 +14,7 @@ import xarray as xr
 #print(ds)
 
 fpaths = [
-    "SST_mon_mean_anom_moving_window.nc"
+    "GPI_mon_mean_anom_moving_window_subbasin_v2.nc"
 ]
 
 da_region, reconstructed = generate_regions(fpaths, nRegions = 10, nIter = 5)
@@ -50,6 +50,6 @@ gl.ylocator = mticker.MultipleLocator(10)
 ax.coastlines()
 
 # format and save
-plt.title("SST Monthly Mean Anomaly in North Atlantic (1860-2015) (10 regions, 1deg grid)")
-plt.savefig("./images/region_generation/SST_mon_mean_anom_moving_window_v2.png")
+plt.title("GPI Monthly Mean Anomaly in North Atlantic (1960-2015) (10 regions, sub-basin)")
+#plt.savefig("./images/region_generation/SST_mon_mean_anom_moving_window_subbasin.png")
 plt.show()
