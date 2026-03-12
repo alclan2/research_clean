@@ -50,6 +50,6 @@ gl.ylocator = mticker.MultipleLocator(10)
 ax.coastlines()
 
 # format and save
-plt.title("SST Monthly Mean Anomaly in North Atlantic (1850-2025) (10 regions, 1deg grid)")
-plt.savefig("./images/region_generation/SST_mon_mean_anom_moving_window.png")
+plt.title("SST Monthly Mean Anomaly in North Atlantic (1860-2015) (10 regions, 1deg grid)")
+plt.savefig("./images/region_generation/SST_mon_mean_anom_moving_window_v2.png")
 plt.show()

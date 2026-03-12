@@ -206,7 +206,7 @@ sst_filt["time"] = sst_filt.indexes["time"].to_datetimeindex()
 sst_anom_ltmm = sst_filt.groupby("time.month") - sst_ltmm_clim_filt
 
 # Calculate SST anomaly
-sst_anom_ltmm = sst_filt.groupby("time.month") - sst_ltmm_clim_filt
+#sst_anom_ltmm = sst_filt.groupby("time.month") - sst_ltmm_clim_filt
 
 # save filtered datasets
 #sst_anom_ltmm.to_netcdf("SST_mon_mean_anom_ltmm.nc")
