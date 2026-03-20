@@ -122,27 +122,28 @@ def shift_lon(geom):
 sub_basins["geometry"] = sub_basins["geometry"].apply(shift_lon)
 
 # open GPI dataset
-gpi = xr.open_dataset(r"datasets\GPI\GPI_ERA5_1950_2025_combined.nc", chunks={"year":1})
+gpi = xr.open_dataset(r"datasets\GPI\post-processing\GPI_ERA5_1950_2025_combined.nc", chunks={"year":1})
 
 # convert lon to -180-180
 gpi = gpi.assign_coords(
     lon=(((gpi.lon + 180) % 360) - 180)
 ).sortby("lon")
 
-# stack year and month
-gpi = gpi.stack(time=("year","month"))
+# stack year and month into time
+#gpi = gpi.stack(time=("year", "month"))
 
-# build datetime index
-time_index = pd.to_datetime(
-    [f"{y}-{m:02d}-01" for y, m in gpi.indexes["time"]]
-)
-gpi = gpi.drop_vars(["year","month"])
+# convert MultiIndex → proper datetime index (SAFE way)
+#gpi = gpi.assign_coords(
+#    time=pd.MultiIndex.to_frame(gpi.indexes["time"])
+#         .apply(lambda x: f"{int(x['year'])}-{int(x['month']):02d}-01", axis=1)
+#         .pipe(pd.to_datetime)
+#)
 
-# assign new time coordinate
-gpi = gpi.assign_coords(time=time_index)
+# now drop the old index cleanly
+#gpi = gpi.reset_index("time", drop=True)
 
 # reorder to (time, lat, lon)
-gpi = gpi.transpose("time", "lat", "lon")
+#gpi = gpi.transpose("time", "lat", "lon")
 
 # add CRS and spatial dims
 gpi = gpi.rio.write_crs("EPSG:4326")
@@ -170,64 +171,106 @@ gpi_full = (
 # change to 1deg grid spacing
 gpi_coarse = gpi_full.coarsen(lat=4, lon=4, boundary="trim").mean()
 
-# remove edges for rolling climatology
-start = str(int(gpi_coarse.time.dt.year.min()) + 10)
-end   = str(int(gpi_coarse.time.dt.year.max()) - 10)
+# calculate GPI monthly mean
+#gpi_monthly_mean = gpi_coarse.mean(dim="year")
 
-gpi_filt = gpi_coarse.sel(time=slice(start, end))
+# rename Ig to GPI in dataset for clarity
+gpi_coarse = gpi_coarse.rename({"Ig": "GPI"})
+
+# check
+#print(gpi_monthly_mean)
+#print(gpi_monthly_mean["Ig"].min().values)
+#print(gpi_monthly_mean["Ig"].max().values)
+
+#gpi_monthly_mean["Ig"].mean(dim=["lat","lon"]).plot()
+#plt.show()
+
+# plot on log scale
+#gpi_plot = np.log1p(gpi_monthly_mean["GPI"])
+
+#gpi_plot.plot(
+#    col="month",
+#    col_wrap=4,
+#    cmap="plasma_r",
+#    figsize=(12, 8),
+#    cbar_kwargs={"label": "log(1 + GPI)"}
+#)
+
+# plot means
+#gpi_monthly_mean["GPI"].plot(
+#    col="month",
+#    col_wrap=4,
+#    cmap="plasma_r",
+#    vmin=0,
+#    vmax=20,  # tweak as needed
+#    figsize=(12, 8),
+#    cbar_kwargs={"label": "GPI"}
+#)
+
+# Add a main title
+#plt.suptitle("Monthly Mean GPI in North Atlantic", fontsize=16, y=0.95)
+#plt.subplots_adjust(top=0.85, right=0.80, hspace=0.3, wspace=0.2)
+#plt.savefig("./images/GPI/GPI_mon_mean.png")
+#plt.show()
+
+# remove edges for rolling climatology
+#start = str(int(gpi_coarse.time.dt.year.min()) + 10)
+#end   = str(int(gpi_coarse.time.dt.year.max()) - 10)
+
+#gpi_filt = gpi_coarse.sel(time=slice(start, end))
 
 # anomaly calc: use moving mean for year n (year-10, year+10)
-rolling_clim = gpi_coarse.groupby("time.month").map(
-    lambda x: x.rolling(time=21, center=True).mean()
-)
+#rolling_clim = gpi_coarse.groupby("time.month").map(
+#    lambda x: x.rolling(time=21, center=True).mean()
+#)
 
-gpi_anom = gpi_filt - rolling_clim.sel(time=gpi_filt.time)
+#gpi_anom = gpi_filt - rolling_clim.sel(time=gpi_filt.time)
 
 # save filtered datasets
-gpi_anom.to_netcdf("GPI_mon_mean_anom_moving_window_1deg.nc")
+gpi_coarse.to_netcdf("datasets\GPI\post-processing\GPI_mon_mean_with_year_dim.nc")
 
 ########################################################################################
 # now region mask for subbasin categorization for region generation
 
 # --- Load dataset ---
-gpi_ds = xr.open_dataset("GPI_mon_mean_anom_moving_window_1deg.nc", decode_times=True,
-    chunks={"time": 12})
-gpi_var = "Ig"
+#gpi_ds = xr.open_dataset("GPI_mon_mean_anom_moving_window_1deg.nc", decode_times=True,
+#    chunks={"time": 12})
+#gpi_var = "Ig"
 
 # --- Create sub-basin mask (lat, lon) ---
-regions = regionmask.from_geopandas(sub_basins, names="sub_basin_name")
-mask = regions.mask(gpi_ds)  # lat, lon with basin IDs and NaN outside
+#regions = regionmask.from_geopandas(sub_basins, names="sub_basin_name")
+#mask = regions.mask(gpi_ds)  # lat, lon with basin IDs and NaN outside
 
 # --- Fill NaNs if needed ---
-mask_filled = mask.fillna(-1)
+#mask_filled = mask.fillna(-1)
 
 # --- Add mask to dataset ---
-gpi_ds["sub_basin_id"] = mask_filled
-gpi_ds["sub_basin_id"].attrs["sub_basin_names"] = list(sub_basins["sub_basin_name"])
+#gpi_ds["sub_basin_id"] = mask_filled
+#gpi_ds["sub_basin_id"].attrs["sub_basin_names"] = list(sub_basins["sub_basin_name"])
 
 # Stack spatial dims
-gpi_stack = gpi_ds[gpi_var].stack(stacked_lat_lon=("lat", "lon"))
-mask_stack = gpi_ds["sub_basin_id"].stack(stacked_lat_lon=("lat", "lon"))
+#gpi_stack = gpi_ds[gpi_var].stack(stacked_lat_lon=("lat", "lon"))
+#mask_stack = gpi_ds["sub_basin_id"].stack(stacked_lat_lon=("lat", "lon"))
 
 # Compute mean per sub-basin (excluding -1)
-gpi_basin_mean = gpi_stack.where(mask_stack != -1).groupby(mask_stack).mean(dim="stacked_lat_lon", skipna=True)
+#gpi_basin_mean = gpi_stack.where(mask_stack != -1).groupby(mask_stack).mean(dim="stacked_lat_lon", skipna=True)
 
 # Broadcast back to grid
-gpi_basin_grid_stack = gpi_stack.copy()
-for basin_id in np.unique(mask_stack.values[~np.isnan(mask_stack.values)]):
-    locs = mask_stack == basin_id
-    gpi_basin_grid_stack.loc[dict(stacked_lat_lon=locs)] = gpi_basin_mean.sel(sub_basin_id=basin_id)
+#gpi_basin_grid_stack = gpi_stack.copy()
+#for basin_id in np.unique(mask_stack.values[~np.isnan(mask_stack.values)]):
+#    locs = mask_stack == basin_id
+#    gpi_basin_grid_stack.loc[dict(stacked_lat_lon=locs)] = gpi_basin_mean.sel(sub_basin_id=basin_id)
 
 # Unstack to original lat/lon
-gpi_basin_grid = gpi_basin_grid_stack.unstack("stacked_lat_lon")
+#gpi_basin_grid = gpi_basin_grid_stack.unstack("stacked_lat_lon")
 
 # Mask out points outside sub-basins
-gpi_basin_grid = gpi_basin_grid.where(gpi_ds["sub_basin_id"] != -1)
+#gpi_basin_grid = gpi_basin_grid.where(gpi_ds["sub_basin_id"] != -1)
 
 # Prevent all-NaN slices for clustering
-gpi_basin_grid = gpi_basin_grid.fillna(-1e20)
+#gpi_basin_grid = gpi_basin_grid.fillna(-1e20)
 
-gpi_basin_grid = gpi_basin_grid.to_dataset(name=gpi_var)
+#gpi_basin_grid = gpi_basin_grid.to_dataset(name=gpi_var)
 
 # save to netcdf
-gpi_basin_grid.to_netcdf("gpi_mon_mean_moving_anom_subbasin.nc")
+#gpi_basin_grid.to_netcdf("GPI_mon_mean_anom_moving_window_subbasin.nc")

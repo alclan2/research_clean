@@ -167,6 +167,8 @@ sst_anom = sst_filt - rolling_clim.sel(time=sst_filt.time)
 # save filtered datasets
 #sst_anom.to_netcdf("SST_mon_mean_anom_moving_window.nc")
 
+print(sst_anom)
+
 ########################################################################################
 # now region mask for subbasin categorization for region generation
 
@@ -205,4 +207,4 @@ sst_basin_grid = sst_basin_grid_stack.unstack("stacked_lat_lon")
 sst_basin_grid = sst_basin_grid.where(sst_ds["sub_basin_id"] != -1)
 
 # save to netcdf
-sst_basin_grid.to_netcdf("SST_mon_mean_anom_moving_window_subbasin.nc")
+#sst_basin_grid.to_netcdf("SST_mon_mean_anom_moving_window_subbasin.nc")
