@@ -153,5 +153,5 @@ gl.xlabel_style = {'size': 10, 'color': 'black'}
 gl.ylabel_style = {'size': 10, 'color': 'black'}
 
 plt.title(f"TC Sub-Basins: {basin_name}")
-#plt.savefig("./images/sub_basins/NAtlantic_sub_basins.png")
+plt.savefig("./images/sub_basins/NAtlantic_sub_basinsv3.png")
 plt.show()
