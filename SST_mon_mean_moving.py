@@ -161,23 +161,25 @@ sst_filt = sst_full.sel(time=slice(start, end))
 rolling_clim = sst_full.groupby("time.month").map(
     lambda x: x.rolling(time=21, center=True).mean()
 )
-
 sst_anom = sst_filt - rolling_clim.sel(time=sst_filt.time)
 
-# save filtered datasets
-#sst_anom.to_netcdf("SST_mon_mean_anom_moving_window.nc")
+# filter to hurricane season (june - october)
+sst_anom_season = sst_anom.sel(time=sst_anom.time.dt.month.isin([6,7,8,9,10]))
 
-print(sst_anom)
+# save filtered datasets
+#sst_anom_season.to_netcdf(r"datasets\COBE2 SST\post-processing\SST_mon_mean_anom_moving_window_jun_oct.nc")
+
+#print(sst_anom)
 
 ########################################################################################
 # now region mask for subbasin categorization for region generation
 
 # --- Load dataset ---
-sst_ds = xr.open_dataset("SST_mon_mean_anom_moving_window.nc", decode_times=True)
+sst_ds = xr.open_dataset(r"datasets\COBE2 SST\post-processing\SST_mon_mean_anom_moving_window_jun_oct.nc", decode_times=True)
 sst_var = "sst"  # variable name
 
 # --- Create sub-basin mask (lat, lon) ---
-regions = regionmask.from_geopandas(sub_basins, names="sub_basin_name")
+regions = regionmask.from_geopandas(region_subbasins, names="sub_basin_name")
 mask = regions.mask(sst_ds)  # lat, lon with basin IDs and NaN outside
 
 # --- Fill NaNs if needed ---
@@ -191,20 +193,28 @@ sst_ds["sub_basin_id"].attrs["sub_basin_names"] = list(sub_basins["sub_basin_nam
 sst_stack = sst_ds[sst_var].stack(stacked_lat_lon=("lat", "lon"))
 mask_stack = sst_ds["sub_basin_id"].stack(stacked_lat_lon=("lat", "lon"))
 
-# Compute mean per sub-basin (excluding -1)
-sst_basin_mean = sst_stack.where(mask_stack != -1).groupby(mask_stack).mean(dim="stacked_lat_lon", skipna=True)
+# Assign coordinate
+sst_stack = sst_stack.assign_coords(sub_basin_id=mask_stack)
 
-# Broadcast back to grid
-sst_basin_grid_stack = sst_stack.copy()
-for basin_id in np.unique(mask_stack.values[~np.isnan(mask_stack.values)]):
-    locs = mask_stack == basin_id
-    sst_basin_grid_stack.loc[dict(stacked_lat_lon=locs)] = sst_basin_mean.sel(sub_basin_id=basin_id)
+# Compute means
+sst_basin_mean = (
+    sst_stack
+    .where(sst_stack.sub_basin_id != -1)
+    .groupby("sub_basin_id")
+    .mean(dim="stacked_lat_lon", skipna=True)
+)
 
-# Unstack to original lat/lon
+# Broadcast using indexing (THIS is the key line)
+sst_basin_grid_stack = sst_basin_mean.sel(sub_basin_id=sst_stack.sub_basin_id)
+
+# Unstack
 sst_basin_grid = sst_basin_grid_stack.unstack("stacked_lat_lon")
 
-# Mask out points outside sub-basins
+# Mask out invalid regions
 sst_basin_grid = sst_basin_grid.where(sst_ds["sub_basin_id"] != -1)
 
+#print(sst_basin_grid)
+
 # save to netcdf
-#sst_basin_grid.to_netcdf("SST_mon_mean_anom_moving_window_subbasin.nc")
+sst_basin_grid.to_netcdf(r"datasets\COBE2 SST\post-processing\SST_mon_mean_anom_moving_window_subbasin_v2_jun_oct.nc")
+

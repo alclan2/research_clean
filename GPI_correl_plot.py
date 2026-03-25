@@ -79,5 +79,5 @@ weak_comp = gpi.sel(year=weak_years, month=8).mean(dim="year")
 
 (strong_comp - weak_comp).plot(cmap="coolwarm")
 plt.title("Strong - Weak August GPI")
-plt.savefig("./images/GPI/GPI_mon_mean_timeseries_active_years.png")
+#plt.savefig("./images/GPI/GPI_mon_mean_timeseries_active_years.png")
 plt.show()
