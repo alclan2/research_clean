@@ -22,6 +22,7 @@ with open("tc_basins.dat", "r") as f:
         n_vertices = int(parts[1])
 
         lon_vals = list(map(float, parts[2:2+n_vertices]))
+        lon_vals = [(lon + 180) % 360 - 180 for lon in lon_vals]
         lat_vals = list(map(float, parts[2+n_vertices:2+2*n_vertices]))
 
         coords = list(zip(lon_vals, lat_vals))
@@ -54,13 +55,13 @@ basins["geometry"] = basins["geometry"].buffer(0)
 basins = basins[~basins.geometry.is_empty]
 
 # convert lon to -180-180
-import shapely.ops
-def shift_lon(geom):
-    return shapely.ops.transform(
-        lambda x, y: (((x + 180) % 360) - 180, y),
-        geom
-    )
-basins["geometry"] = basins["geometry"].apply(shift_lon)
+#import shapely.ops
+#def shift_lon(geom):
+#    return shapely.ops.transform(
+#        lambda x, y: (((x + 180) % 360) - 180, y),
+#        geom
+#    )
+#basins["geometry"] = basins["geometry"].apply(shift_lon)
 
 # filter to NE Atlantic basin only
 basin_name = "N Atlantic"
@@ -69,7 +70,7 @@ basins_NAtl = basins[basins["basin name"] == basin_name]
 # read in NAtl subbasin polygons
 sub_polygons_dict = {}
 
-with open("tc_subbasins_NAtl.dat", "r") as f:
+with open("tc_subbasins_NAtl_v2.dat", "r") as f:
     for line in f:
         line = line.strip()
         if not line or line.startswith("#"):
@@ -80,6 +81,7 @@ with open("tc_subbasins_NAtl.dat", "r") as f:
         n_vertices = int(parts[1])
 
         lon_vals = list(map(float, parts[2:2+n_vertices]))
+        lon_vals = [(lon + 180) % 360 - 180 for lon in lon_vals]
         lat_vals = list(map(float, parts[2+n_vertices:2+2*n_vertices]))
 
         coords = list(zip(lon_vals, lat_vals))
@@ -112,7 +114,7 @@ sub_basins["geometry"] = sub_basins["geometry"].buffer(0)
 sub_basins = sub_basins[~sub_basins.geometry.is_empty]
 
 # shift lon
-sub_basins["geometry"] = sub_basins["geometry"].apply(shift_lon)
+#sub_basins["geometry"] = sub_basins["geometry"].apply(shift_lon)
 
 
 # choose projection
@@ -153,5 +155,5 @@ gl.xlabel_style = {'size': 10, 'color': 'black'}
 gl.ylabel_style = {'size': 10, 'color': 'black'}
 
 plt.title(f"TC Sub-Basins: {basin_name}")
-plt.savefig("./images/sub_basins/NAtlantic_sub_basinsv3.png")
+#plt.savefig("./images/sub_basins/NAtlantic_sub_basinsv3_proposed_changes.png")
 plt.show()

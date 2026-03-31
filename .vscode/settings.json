@@ -1,4 +1,5 @@
 {
-    "python-envs.defaultEnvManager": "ms-python.python:system",
-    "python-envs.defaultPackageManager": "ms-python.python:pip"
+    "python.terminal.activateEnvironment": true,
+    "python.condaPath": "/opt/miniconda3/bin/conda",
+    "python.defaultInterpreterPath": "/opt/miniconda3/envs/geo3/bin/python"
 }
