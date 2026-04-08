@@ -122,7 +122,7 @@ def shift_lon(geom):
 sub_basins["geometry"] = sub_basins["geometry"].apply(shift_lon)
 
 # open GPI dataset
-gpi = xr.open_dataset(r"datasets\GPI\post-processing\GPI_ERA5_1950_2025_combined.nc", chunks={"year":1})
+gpi = xr.open_dataset(r"datasets/GPI/GPI_ERA5_1950_2025_combined.nc", chunks={"year":1})
 
 # convert lon to -180-180
 gpi = gpi.assign_coords(
@@ -178,7 +178,7 @@ gpi_full = (
 )
 
 # change to 1deg grid spacing
-gpi_coarse = gpi_full.coarsen(lat=4, lon=4, boundary="trim").mean()
+gpi_coarse = gpi_full.coarsen(lat=16, lon=16, boundary="trim").mean()
 
 # remove edges for rolling climatology
 start = str(int(gpi_coarse.time.dt.year.min()) + 10)
@@ -194,54 +194,53 @@ rolling_clim = (
 )
 gpi_anom = gpi_filt - rolling_clim.sel(time=gpi_filt.time)
 
-# filter to hurricane season only (June - October)
-gpi_anom_season = gpi_anom.sel(time=gpi_anom.time.dt.month.isin([6,7,8,9,10]))
-
+# filter to AUGUST only
+gpi_anom_aug = gpi_anom.sel(time=gpi_anom.time.dt.month.isin([10]))
 
 # save filtered datasets
-#gpi_anom_season.to_netcdf(r"datasets\GPI\post-processing\GPI_mon_mean_anom_moving_window_1deg_jun_oct.nc")
+gpi_anom_aug.to_netcdf(r"datasets/GPI/post-processing/GPI_mon_mean_anom_moving_window_4deg_oct.nc")
 
 ########################################################################################
 # now region mask for subbasin categorization for region generation
 
 # --- Load dataset ---
-gpi_ds = xr.open_dataset(r"datasets\GPI\post-processing\GPI_mon_mean_anom_moving_window_1deg_jun_oct.nc")
-gpi_var = "GPI"
+#gpi_ds = xr.open_dataset(r"datasets\GPI\post-processing\GPI_mon_mean_anom_moving_window_1deg_jun_oct.nc")
+#gpi_var = "GPI"
 
 # --- Create sub-basin mask (lat, lon) ---
-regions = regionmask.from_geopandas(region_subbasins, names="sub_basin_name")
-mask = regions.mask(gpi_ds)  # lat, lon with basin IDs and NaN outside
+#regions = regionmask.from_geopandas(region_subbasins, names="sub_basin_name")
+#mask = regions.mask(gpi_ds)  # lat, lon with basin IDs and NaN outside
 
 # --- Fill NaNs if needed ---
-mask_filled = mask.fillna(-1)
+#mask_filled = mask.fillna(-1)
 
 # --- Add mask to dataset ---
-gpi_ds["sub_basin_id"] = mask_filled
-gpi_ds["sub_basin_id"].attrs["sub_basin_names"] = list(sub_basins["sub_basin_name"])
+#gpi_ds["sub_basin_id"] = mask_filled
+#gpi_ds["sub_basin_id"].attrs["sub_basin_names"] = list(sub_basins["sub_basin_name"])
 
 # Stack spatial dims
-gpi_stack = gpi_ds[gpi_var].stack(stacked_lat_lon=("lat", "lon"))
-mask_stack = gpi_ds["sub_basin_id"].stack(stacked_lat_lon=("lat", "lon"))
+#gpi_stack = gpi_ds[gpi_var].stack(stacked_lat_lon=("lat", "lon"))
+#mask_stack = gpi_ds["sub_basin_id"].stack(stacked_lat_lon=("lat", "lon"))
 
 # Assign coordinate
-gpi_stack = gpi_stack.assign_coords(sub_basin_id=mask_stack)
+#gpi_stack = gpi_stack.assign_coords(sub_basin_id=mask_stack)
 
 # Compute means
-gpi_basin_mean = (
-    gpi_stack
-    .where(gpi_stack.sub_basin_id != -1)
-    .groupby("sub_basin_id")
-    .mean(dim="stacked_lat_lon", skipna=True)
-)
+#gpi_basin_mean = (
+#    gpi_stack
+#    .where(gpi_stack.sub_basin_id != -1)
+#    .groupby("sub_basin_id")
+#    .mean(dim="stacked_lat_lon", skipna=True)
+#)
 
 # Broadcast using indexing
-gpi_basin_grid_stack = gpi_basin_mean.sel(sub_basin_id=gpi_stack.sub_basin_id)
+#gpi_basin_grid_stack = gpi_basin_mean.sel(sub_basin_id=gpi_stack.sub_basin_id)
 
 # Unstack
-gpi_basin_grid = gpi_basin_grid_stack.unstack("stacked_lat_lon")
+#gpi_basin_grid = gpi_basin_grid_stack.unstack("stacked_lat_lon")
 
 # Mask out invalid regions
-gpi_basin_grid = gpi_basin_grid.where(gpi_ds["sub_basin_id"] != -1)
+#gpi_basin_grid = gpi_basin_grid.where(gpi_ds["sub_basin_id"] != -1)
 
 # save to netcdf
-gpi_basin_grid.to_netcdf(r"datasets\GPI\post-processing\GPI_mon_mean_anom_moving_window_subbasin_v3_jun_oct.nc")
+#gpi_basin_grid.to_netcdf(r"datasets\GPI\post-processing\GPI_mon_mean_anom_moving_window_subbasin_v3_jun_oct.nc")

@@ -20,7 +20,7 @@ df = pd.read_parquet(ClassifiedData)
 
 # TC Nodes:
 #dftc_node=df[(df.Track_Info.str.contains('TC')) & (df.Short_Label=='TC')]
-dftc_node=df[df.Short_Label=='TC']
+dftc_node=df[df.Track_Info=='TC']
 
 
 # first node: where the TC originates
@@ -240,7 +240,7 @@ ax.set_yticks(np.arange(lat_min_10, lat_max_10, 10), crs=ccrs.PlateCarree())
 
 ax.set_extent([lon_min_10, lon_max_10, lat_min_10, lat_max_10],crs=ccrs.PlateCarree())
 
-plt.savefig(r"images\TC_timeseries\TC_origin_plot_NAtl_subbasins_v2.png")
+#plt.savefig(r"images\TC_timeseries\TC_origin_plot_NAtl_subbasins_v2.png")
 plt.show()
 
 

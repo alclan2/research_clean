@@ -123,7 +123,7 @@ sub_basins["geometry"] = sub_basins["geometry"].apply(shift_lon)
 
 # open COBE SST monthly mean file
 time_coder = xr.coders.CFDatetimeCoder(use_cftime=True)
-ds = xr.open_dataset(r"datasets\COBE2 SST\sst.mon.mean.nc", decode_times=time_coder)
+ds = xr.open_dataset(r"datasets/COBE2 SST/sst.mon.mean.nc", decode_times=time_coder)
 
 # filter to only SST variable
 sst = ds["sst"]
@@ -163,11 +163,11 @@ rolling_clim = sst_full.groupby("time.month").map(
 )
 sst_anom = sst_filt - rolling_clim.sel(time=sst_filt.time)
 
-# filter to hurricane season (june - october)
-sst_anom_season = sst_anom.sel(time=sst_anom.time.dt.month.isin([6,7,8,9,10]))
+# filter to AUGUST only
+sst_anom_aug = sst_anom.sel(time=sst_anom.time.dt.month.isin([10]))
 
 # save filtered datasets
-#sst_anom_season.to_netcdf(r"datasets\COBE2 SST\post-processing\SST_mon_mean_anom_moving_window_jun_oct.nc")
+sst_anom_aug.to_netcdf(r"datasets/COBE2 SST/post-processing/SST_mon_mean_anom_moving_window_oct.nc")
 
 #print(sst_anom)
 
@@ -175,46 +175,46 @@ sst_anom_season = sst_anom.sel(time=sst_anom.time.dt.month.isin([6,7,8,9,10]))
 # now region mask for subbasin categorization for region generation
 
 # --- Load dataset ---
-sst_ds = xr.open_dataset(r"datasets\COBE2 SST\post-processing\SST_mon_mean_anom_moving_window_jun_oct.nc", decode_times=True)
-sst_var = "sst"  # variable name
+#sst_ds = xr.open_dataset(r"datasets\COBE2 SST\post-processing\SST_mon_mean_anom_moving_window_jun_oct.nc", decode_times=True)
+#sst_var = "sst"  # variable name
 
 # --- Create sub-basin mask (lat, lon) ---
-regions = regionmask.from_geopandas(region_subbasins, names="sub_basin_name")
-mask = regions.mask(sst_ds)  # lat, lon with basin IDs and NaN outside
+#regions = regionmask.from_geopandas(region_subbasins, names="sub_basin_name")
+#mask = regions.mask(sst_ds)  # lat, lon with basin IDs and NaN outside
 
 # --- Fill NaNs if needed ---
-mask_filled = mask.fillna(-1)
+#mask_filled = mask.fillna(-1)
 
 # --- Add mask to dataset ---
-sst_ds["sub_basin_id"] = mask_filled
-sst_ds["sub_basin_id"].attrs["sub_basin_names"] = list(sub_basins["sub_basin_name"])
+#sst_ds["sub_basin_id"] = mask_filled
+#sst_ds["sub_basin_id"].attrs["sub_basin_names"] = list(sub_basins["sub_basin_name"])
 
 # Stack spatial dims
-sst_stack = sst_ds[sst_var].stack(stacked_lat_lon=("lat", "lon"))
-mask_stack = sst_ds["sub_basin_id"].stack(stacked_lat_lon=("lat", "lon"))
+#sst_stack = sst_ds[sst_var].stack(stacked_lat_lon=("lat", "lon"))
+#mask_stack = sst_ds["sub_basin_id"].stack(stacked_lat_lon=("lat", "lon"))
 
 # Assign coordinate
-sst_stack = sst_stack.assign_coords(sub_basin_id=mask_stack)
+#sst_stack = sst_stack.assign_coords(sub_basin_id=mask_stack)
 
 # Compute means
-sst_basin_mean = (
-    sst_stack
-    .where(sst_stack.sub_basin_id != -1)
-    .groupby("sub_basin_id")
-    .mean(dim="stacked_lat_lon", skipna=True)
-)
+#sst_basin_mean = (
+#    sst_stack
+#    .where(sst_stack.sub_basin_id != -1)
+#    .groupby("sub_basin_id")
+#    .mean(dim="stacked_lat_lon", skipna=True)
+#)
 
 # Broadcast using indexing (THIS is the key line)
-sst_basin_grid_stack = sst_basin_mean.sel(sub_basin_id=sst_stack.sub_basin_id)
+#sst_basin_grid_stack = sst_basin_mean.sel(sub_basin_id=sst_stack.sub_basin_id)
 
 # Unstack
-sst_basin_grid = sst_basin_grid_stack.unstack("stacked_lat_lon")
+#sst_basin_grid = sst_basin_grid_stack.unstack("stacked_lat_lon")
 
 # Mask out invalid regions
-sst_basin_grid = sst_basin_grid.where(sst_ds["sub_basin_id"] != -1)
+#sst_basin_grid = sst_basin_grid.where(sst_ds["sub_basin_id"] != -1)
 
 #print(sst_basin_grid)
 
 # save to netcdf
-sst_basin_grid.to_netcdf(r"datasets\COBE2 SST\post-processing\SST_mon_mean_anom_moving_window_subbasin_v2_jun_oct.nc")
+#sst_basin_grid.to_netcdf(r"datasets\COBE2 SST\post-processing\SST_mon_mean_anom_moving_window_subbasin_v2_jun_oct.nc")
 
