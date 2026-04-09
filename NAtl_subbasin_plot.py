@@ -7,6 +7,8 @@ import geopandas as gpd
 from shapely.geometry import Polygon, MultiPolygon, Point
 from shapely.ops import transform
 import cartopy.feature as cfeature
+import textwrap
+import matplotlib.patheffects as pe
 
 # plot tc_basins over world map
 polygons_dict = {}
@@ -125,10 +127,10 @@ ax = plt.axes(projection=ccrs.PlateCarree())
 ax.add_feature(cfeature.COASTLINE, linewidth=1)
 
 # plot only selected basin
-basins_NAtl.plot(ax=ax, edgecolor="black", facecolor="red", alpha=0.5, transform=ccrs.PlateCarree())
+basins_NAtl.plot(ax=ax, edgecolor="black", facecolor="lightblue", alpha=0.5, transform=ccrs.PlateCarree())
 
 # overlay subbasins
-sub_basins.plot(ax=ax, edgecolor="blue", facecolor="none", linewidth=1.5, transform=ccrs.PlateCarree())
+sub_basins.plot(ax=ax, edgecolor="darkblue", facecolor="none", linewidth=1.5, transform=ccrs.PlateCarree())
 
 # Zoom to basin
 minx, miny, maxx, maxy = basins_NAtl.total_bounds
@@ -143,11 +145,29 @@ gl = ax.gridlines(
     linestyle='--'
 )
 
+# add basin labels
 for idx, row in sub_basins.iterrows():
     geom = row.geometry
     name = row["sub_basin_name"]
+    
+    # wrap text (adjust width as needed)
+    name_wrapped = "\n".join(textwrap.wrap(name, width=10, break_long_words=False))
+    
     centroid = geom.centroid
-    ax.text(centroid.x, centroid.y, name, fontsize=10, color="blue", ha="center")
+    ax.text(
+    centroid.x,
+    centroid.y,
+    name_wrapped,
+    fontsize=8,
+    color="darkblue",
+    ha="center",
+    va="center",
+    transform=ccrs.PlateCarree(),
+    path_effects=[
+        pe.withStroke(linewidth=2, foreground="white")
+    ]
+)
+
 
 gl.xlocator = plt.MultipleLocator(10)  # longitude every 10°
 gl.ylocator = plt.MultipleLocator(10)  # latitude every 10°
@@ -155,5 +175,5 @@ gl.xlabel_style = {'size': 10, 'color': 'black'}
 gl.ylabel_style = {'size': 10, 'color': 'black'}
 
 plt.title(f"TC Sub-Basins: {basin_name}")
-#plt.savefig("./images/sub_basins/NAtlantic_sub_basinsv3_proposed_changes.png")
+plt.savefig("images/sub_basins/NAtlantic_sub_basinsv3_proposed_changes_v2.png")
 plt.show()

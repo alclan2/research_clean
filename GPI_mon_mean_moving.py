@@ -178,7 +178,7 @@ gpi_full = (
 )
 
 # change to 1deg grid spacing
-gpi_coarse = gpi_full.coarsen(lat=16, lon=16, boundary="trim").mean()
+gpi_coarse = gpi_full.coarsen(lat=4, lon=4, boundary="trim").mean()
 
 # remove edges for rolling climatology
 start = str(int(gpi_coarse.time.dt.year.min()) + 10)
@@ -195,10 +195,16 @@ rolling_clim = (
 gpi_anom = gpi_filt - rolling_clim.sel(time=gpi_filt.time)
 
 # filter to AUGUST only
-gpi_anom_aug = gpi_anom.sel(time=gpi_anom.time.dt.month.isin([10]))
+gpi_anom_aug = gpi_anom.sel(time=gpi_anom.time.dt.month.isin([8]))
+
+# Compute mask so it's no longer a lazy dask array
+mask = gpi_anom_aug.notnull().any(dim="time").compute()
+
+# Now drop land points properly
+gpi_anom_aug = gpi_anom_aug.where(mask, drop=True)
 
 # save filtered datasets
-gpi_anom_aug.to_netcdf(r"datasets/GPI/post-processing/GPI_mon_mean_anom_moving_window_4deg_oct.nc")
+#gpi_anom_aug.to_netcdf(r"datasets/GPI/post-processing/GPI_mon_mean_anom_moving_window_1deg_aug_noNANs.nc")
 
 ########################################################################################
 # now region mask for subbasin categorization for region generation
