@@ -3,17 +3,13 @@ import matplotlib.image as mpimg
 
 # File paths
 files = [
-    r"images/region_generation/GPI_mon_mean_anom_moving_window_1deg_aug_3reg.png",
-    r"images/region_generation/GPI_mon_mean_anom_moving_window_1deg_aug_4reg.png",
-    r"images/region_generation/GPI_mon_mean_anom_moving_window_1deg_aug_5reg.png",
-    r"images/region_generation/GPI_mon_mean_anom_moving_window_1deg_aug_6reg.png",
-    r"images/region_generation/SST_mon_mean_anom_moving_window_1deg_aug_3reg.png",
-    r"images/region_generation/SST_mon_mean_anom_moving_window_1deg_aug_4reg.png",
-    r"images/region_generation/SST_mon_mean_anom_moving_window_1deg_aug_5reg.png",
-    r"images/region_generation/SST_mon_mean_anom_moving_window_1deg_aug_6reg.png",
+    r"images/region_generation/GPI_mon_mean_anom_moving_window_1deg_earlyszn_10reg.png",
+    r"images/region_generation/GPI_mon_mean_anom_moving_window_1deg_lateszn_10reg.png",
+    r"images/region_generation/SST_mon_mean_anom_moving_window_1deg_earlyszn_10reg.png",
+    r"images/region_generation/SST_mon_mean_anom_moving_window_1deg_lateszn_10reg.png"
 ]
 
-fig, axes = plt.subplots(2, 4, figsize=(12, 6))
+fig, axes = plt.subplots(2, 2, figsize=(12, 6))
 axes = axes.flatten()
 
 for ax, file, in zip(axes, files):
@@ -22,5 +18,5 @@ for ax, file, in zip(axes, files):
     ax.axis("off")  # hide axes ticks
 
 plt.tight_layout()
-plt.savefig(r"images/region_generation/SSTvsGPI_mon_mean_anom_moving_window_1deg_aug_3_6reg_grid.png")
+plt.savefig(r"images/region_generation/SSTvsGPI_mon_mean_anom_moving_window_1deg_early_vs_lateszn_10reg_grid.png")
 plt.show()

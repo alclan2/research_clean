@@ -26,10 +26,10 @@ import numpy as np
 #da.to_netcdf(r"datasets\COBE2 SST\post-processing\SST_mon_mean_anom_moving_window_subbasin_v2_jun_oct_cleanForRegGen.nc")
 
 fpaths = [
-    "datasets/COBE2 SST/post-processing/SST_mon_mean_anom_moving_window_jun_aug_earlyszn.nc"
+    "datasets/GPI/post-processing/GPI_mon_mean_anom_moving_window_4deg_jun_aug_earlyszn.nc"
 ]
 
-da_region, reconstructed = generate_regions(fpaths, nRegions = 10, nIter = 5)
+da_region, reconstructed = generate_regions(fpaths, nRegions = 3, nIter = 5)
 
 # create map with projection of continents
 fig = plt.figure(figsize=(10, 6))
@@ -62,7 +62,7 @@ gl.ylocator = mticker.MultipleLocator(10)
 ax.coastlines()
 
 # format and save
-plt.title("SST Monthly Mean Anomaly in North Atlantic Early Season (Jun-Aug, 1860-2015) (10 regions, 1deg)")
+plt.title("GPI Monthly Mean Anomaly in North Atlantic Early Season (Jun-Aug, 1960-2015) (3 regions, 4deg)")
 plt.tight_layout()
-plt.savefig("images/region_generation/SST_mon_mean_anom_moving_window_1deg_earlyszn_10reg.png")
+#plt.savefig("images/region_generation/GPI_mon_mean_anom_moving_window_4deg_earlyszn_3reg.png")
 plt.show()
