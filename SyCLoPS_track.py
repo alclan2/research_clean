@@ -10,18 +10,14 @@ import cartopy.feature as cfeature
 import matplotlib.patheffects as pe
 
 # path to the classified dataset
-ClassifiedData = r"datasets\SyCLoPS\SyCLoPS_classified_ERA5_1940_2024.parquet"
+ClassifiedData = r"datasets/SyCLoPS/SyCLoPS_classified_ERA5_1940_2024.parquet"
 
 # open the parquet format file (PyArrow package required)
 df = pd.read_parquet(ClassifiedData)
 
-# select TC and TD LPS nodes and filter QS out of Track_Info
-#dftc = df[((df.Short_Label=='TC') | (df.Short_Label=='TD')) & ~(df['Track_Info'].str.contains('QS', case=False, na=False))]
-
 # TC Nodes:
 #dftc_node=df[(df.Track_Info.str.contains('TC')) & (df.Short_Label=='TC')]
-dftc_node=df[df.Track_Info=='TC']
-
+dftc_node=df[df.Track_Info=='Track_TC']
 
 # first node: where the TC originates
 tc_origin = (
@@ -31,13 +27,19 @@ tc_origin = (
     .head(1)
 )
 
+#print(tc_origin.shape)
+
 # last node: where the TC dissipates
+TC_TIDs = tc_origin['TID']
 tc_dissipate = (
-    dftc_node
+    dftc_node[dftc_node['TID'].isin(TC_TIDs)]
     .sort_values(by='ISOTIME')
     .groupby('TID', as_index=False)
     .tail(1)
 )
+
+#print(tc_dissipate.shape)
+
 
 # make a new column with YEAR only from ISOTIME
 #dfc_sub["YEAR"] = pd.to_datetime(dfc_sub["ISOTIME"]).dt.year
@@ -145,12 +147,6 @@ def shift_lon(geom):
 # shift lon
 sub_basins["geometry"] = sub_basins["geometry"].apply(shift_lon)
 
-
-
-
-
-
-
 # convert LAT and LON to a new column Points which contains (lon, lat) and convert to a geo data frame so we can filter using polygons
 tc_origin_points = gpd.GeoDataFrame(
     tc_origin, 
@@ -222,7 +218,7 @@ for idx, row in sub_basins.iterrows():
             point.x, point.y,
             row["sub_basin_name"],
             transform=ccrs.PlateCarree(),
-            fontsize=9,
+            fontsize=7,
             weight='bold',
             ha='center',
             va='center',
@@ -234,13 +230,21 @@ for idx, row in sub_basins.iterrows():
             pe.withStroke(linewidth=3, foreground="white")
         ])
 
+
+
+
+
+# CHECK
+#print(tc_dissipate_filtered.shape)
+
+
 # Set tick marks every 10 degrees
 ax.set_xticks(np.arange(lon_min_10, lon_max_10, 10), crs=ccrs.PlateCarree())
 ax.set_yticks(np.arange(lat_min_10, lat_max_10, 10), crs=ccrs.PlateCarree())
 
 ax.set_extent([lon_min_10, lon_max_10, lat_min_10, lat_max_10],crs=ccrs.PlateCarree())
 
-#plt.savefig(r"images\TC_timeseries\TC_origin_plot_NAtl_subbasins_v2.png")
+plt.savefig(r"images/TC_timeseries/TC_origin_plot_NAtl_subbasins_v4.png")
 plt.show()
 
 

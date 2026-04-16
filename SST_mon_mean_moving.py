@@ -163,11 +163,11 @@ rolling_clim = sst_full.groupby("time.month").map(
 )
 sst_anom = sst_filt - rolling_clim.sel(time=sst_filt.time)
 
-# filter to AUGUST only
-sst_anom_aug = sst_anom.sel(time=sst_anom.time.dt.month.isin([10]))
+# filter to specific months
+sst_anom_late_season = sst_anom.sel(time=sst_anom.time.dt.month.isin([9,10]))
 
 # save filtered datasets
-sst_anom_aug.to_netcdf(r"datasets/COBE2 SST/post-processing/SST_mon_mean_anom_moving_window_oct.nc")
+sst_anom_late_season.to_netcdf(r"datasets/COBE2 SST/post-processing/SST_mon_mean_anom_moving_window_sep_oct_lateszn.nc")
 
 #print(sst_anom)
 
