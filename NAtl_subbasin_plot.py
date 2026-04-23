@@ -72,7 +72,7 @@ basins_NAtl = basins[basins["basin name"] == basin_name]
 # read in NAtl subbasin polygons
 sub_polygons_dict = {}
 
-with open("tc_subbasins_NAtl_coarse_v3.dat", "r") as f:
+with open("tc_subbasins_NAtl_v3.dat", "r") as f:
     for line in f:
         line = line.strip()
         if not line or line.startswith("#"):
@@ -127,7 +127,7 @@ ax = plt.axes(projection=ccrs.PlateCarree())
 ax.add_feature(cfeature.COASTLINE, linewidth=1)
 
 # plot only selected basin
-basins_NAtl.plot(ax=ax, edgecolor="black", facecolor="none", alpha=0.5, transform=ccrs.PlateCarree())
+basins_NAtl.plot(ax=ax, edgecolor="black", facecolor="lightblue", alpha=0.5, transform=ccrs.PlateCarree())
 
 # overlay subbasins
 sub_basins.plot(ax=ax, edgecolor="darkblue", facecolor="none", linewidth=1.5, transform=ccrs.PlateCarree())
@@ -175,5 +175,5 @@ gl.xlabel_style = {'size': 10, 'color': 'black'}
 gl.ylabel_style = {'size': 10, 'color': 'black'}
 
 plt.title(f"TC Sub-Basins: {basin_name}")
-#plt.savefig("images/sub_basins/NAtlantic_sub_basins_v4.png")
+plt.savefig("images/sub_basins/NAtlantic_sub_basins_v4.png")
 plt.show()

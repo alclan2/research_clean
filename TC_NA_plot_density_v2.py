@@ -112,6 +112,10 @@ plt.hist2d(x, y, bins = [lon_edges, lat_edges], range = [[lon_min, lon_max], [la
 
 ax.set_extent([lon_min, lon_max, lat_min, lat_max], crs = ccrs.PlateCarree())
 
+
+
+
+
 # read in NAtl subbasin polygons
 sub_polygons_dict = {}
 
@@ -243,12 +247,12 @@ ax.tick_params(
     labelsize=10
 )
 
-# add legend & titel
+# add legend & title
 plt.colorbar(shrink = 0.7, fraction = 0.05, orientation = 'horizontal')
 plt.title("TC Density in North Atlantic (1940-2024)")
 
 # save plot
-plt.savefig("images/TC_density/TC_density_NAtl_w_subbasin_overlay.png")
+#plt.savefig("images/TC_density/TC_density_NAtl_w_subbasin_overlay.png")
 
 # display the plot
 plt.show()
