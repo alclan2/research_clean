@@ -8,6 +8,7 @@ from shapely.geometry import Polygon, MultiPolygon, Point
 from shapely.ops import transform
 import cartopy.feature as cfeature
 import matplotlib.patheffects as pe
+import textwrap
 
 # path to the classified dataset
 ClassifiedData = r"datasets/SyCLoPS/SyCLoPS_classified_ERA5_1940_2024.parquet"
@@ -39,7 +40,6 @@ tc_dissipate = (
 )
 
 #print(tc_dissipate.shape)
-
 
 # make a new column with YEAR only from ISOTIME
 #dfc_sub["YEAR"] = pd.to_datetime(dfc_sub["ISOTIME"]).dt.year
@@ -94,7 +94,7 @@ basins = basins[~basins.geometry.is_empty]
 # read in tc_subbasins_NAtl file
 sub_polygons_dict = {}
 
-with open("tc_subbasins_NAtl.dat", "r") as f:
+with open("tc_subbasins_NAtl_v3.dat", "r") as f:
     for line in f:
         line = line.strip()
         if not line or line.startswith("#"):
@@ -105,6 +105,7 @@ with open("tc_subbasins_NAtl.dat", "r") as f:
         n_vertices = int(parts[1])
 
         lon_vals = list(map(float, parts[2:2+n_vertices]))
+        lon_vals = [(lon + 180) % 360 - 180 for lon in lon_vals]
         lat_vals = list(map(float, parts[2+n_vertices:2+2*n_vertices]))
 
         coords = list(zip(lon_vals, lat_vals))
@@ -148,24 +149,24 @@ def shift_lon(geom):
 sub_basins["geometry"] = sub_basins["geometry"].apply(shift_lon)
 
 # convert LAT and LON to a new column Points which contains (lon, lat) and convert to a geo data frame so we can filter using polygons
-tc_origin_points = gpd.GeoDataFrame(
-    tc_origin, 
-    geometry = gpd.points_from_xy(tc_origin.LON, tc_origin.LAT),
+tc_dissipate_points = gpd.GeoDataFrame(
+    tc_dissipate, 
+    geometry = gpd.points_from_xy(tc_dissipate.LON, tc_dissipate.LAT),
     crs = "EPSG:4326"
 )
 
 # filter points to North Atlantic
-tc_origin_filtered = gpd.sjoin(
-    tc_origin_points,
+tc_dissipate_filtered = gpd.sjoin(
+    tc_dissipate_points,
     basins[basins["basin name"] == "N Atlantic"],
     how = "inner",
     predicate = "within"
 )
 
 # convert lon to -180-180 from 0-360
-tc_origin_filtered['LON'] = ((tc_origin_filtered['LON'] + 180) % 360) - 180
+tc_dissipate_filtered['LON'] = ((tc_dissipate_filtered['LON'] + 180) % 360) - 180
 
-# plot tc dissipate points for North Atlantic
+# plot tc origin points for North Atlantic
 # Create a figure with a geographic projection
 fig = plt.figure(figsize=(8,6))
 ax = plt.axes(projection=ccrs.PlateCarree()) 
@@ -182,9 +183,9 @@ sub_basins.plot(
 
 # Scatter the points
 ax.scatter(
-    tc_origin_filtered['LON'],
-    tc_origin_filtered['LAT'],
-    c='blue',
+    tc_dissipate_filtered['LON'],
+    tc_dissipate_filtered['LAT'],
+    c='green',
     alpha=0.6,
     transform=ccrs.PlateCarree()
 )
@@ -195,13 +196,13 @@ ax.coastlines(resolution='50m', color='black', linewidth=1)
 # Set labels and title
 ax.set_xlabel('Longitude')
 ax.set_ylabel('Latitude')
-ax.set_title('Origin (First Node) of Each TC Track in the North Atlantic (1940-2024)')
+ax.set_title('Dissipation (Last Node) of Each TC Track in the North Atlantic (1940-2024)')
 
 # find lon/lat min/max for axis bounds
-lon_min = tc_origin_filtered['LON'].min()
-lon_max = tc_origin_filtered['LON'].max()
-lat_min = tc_origin_filtered['LAT'].min()
-lat_max = tc_origin_filtered['LAT'].max()
+lon_min = tc_dissipate_filtered['LON'].min()
+lon_max = tc_dissipate_filtered['LON'].max()
+lat_min = tc_dissipate_filtered['LAT'].min()
+lat_max = tc_dissipate_filtered['LAT'].max()
 
 # round to nearest 10deg
 lon_min_10 = np.floor(lon_min / 10) * 10 
@@ -212,11 +213,15 @@ lat_max_10 = np.ceil(lat_max / 10) * 10
 # add sub-basin labels
 for idx, row in sub_basins.iterrows():
     point = row.geometry.representative_point()
+    name = row["sub_basin_name"]
+
+    # wrap text (adjust width as needed)
+    name_wrapped = "\n".join(textwrap.wrap(name, width=10, break_long_words=False, break_on_hyphens=False))
     
     if (lon_min_10 <= point.x <= lon_max_10) and (lat_min_10 <= point.y <= lat_max_10):
         txt = ax.text(
             point.x, point.y,
-            row["sub_basin_name"],
+            name_wrapped,
             transform=ccrs.PlateCarree(),
             fontsize=7,
             weight='bold',
@@ -230,21 +235,11 @@ for idx, row in sub_basins.iterrows():
             pe.withStroke(linewidth=3, foreground="white")
         ])
 
-
-
-
-
-# CHECK
-#print(tc_dissipate_filtered.shape)
-
-
 # Set tick marks every 10 degrees
 ax.set_xticks(np.arange(lon_min_10, lon_max_10, 10), crs=ccrs.PlateCarree())
 ax.set_yticks(np.arange(lat_min_10, lat_max_10, 10), crs=ccrs.PlateCarree())
 
 ax.set_extent([lon_min_10, lon_max_10, lat_min_10, lat_max_10],crs=ccrs.PlateCarree())
 
-plt.savefig(r"images/TC_timeseries/TC_origin_plot_NAtl_subbasins_v4.png")
+plt.savefig(r"images/TC_timeseries/TC_dissipate_plot_NAtl_subbasins_detailed_v5.png")
 plt.show()
-
-

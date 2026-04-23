@@ -3,13 +3,11 @@ import matplotlib.image as mpimg
 
 # File paths
 files = [
-    r"images/region_generation/GPI_mon_mean_anom_moving_window_1deg_earlyszn_10reg.png",
-    r"images/region_generation/GPI_mon_mean_anom_moving_window_1deg_lateszn_10reg.png",
-    r"images/region_generation/SST_mon_mean_anom_moving_window_1deg_earlyszn_10reg.png",
-    r"images/region_generation/SST_mon_mean_anom_moving_window_1deg_lateszn_10reg.png"
+    r"images/TC_timeseries/TC_origin_plot_NAtl_subbasins_detailed_v5.png",
+    r"images/TC_timeseries/TC_dissipate_plot_NAtl_subbasins_detailed_v5.png"
 ]
 
-fig, axes = plt.subplots(2, 2, figsize=(12, 6))
+fig, axes = plt.subplots(1, 2, figsize=(12, 6))
 axes = axes.flatten()
 
 for ax, file, in zip(axes, files):
@@ -17,6 +15,8 @@ for ax, file, in zip(axes, files):
     ax.imshow(img)
     ax.axis("off")  # hide axes ticks
 
-plt.tight_layout()
-plt.savefig(r"images/region_generation/SSTvsGPI_mon_mean_anom_moving_window_1deg_early_vs_lateszn_10reg_grid.png")
+plt.subplots_adjust(left=0, right=1, top=1, bottom=0, wspace=0, hspace=0)
+
+#plt.tight_layout()
+plt.savefig(r"images/TC_timeseries/TC_orig_vs_diss_plot_NAtl_subbasins_detailed_grid.png")
 plt.show()
