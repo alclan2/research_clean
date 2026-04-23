@@ -204,7 +204,20 @@ mask = gpi_anom_early_season.notnull().any(dim="time").compute()
 gpi_anom_final = gpi_anom_early_season.where(mask, drop=True)
 
 # save filtered datasets
-gpi_anom_final.to_netcdf(r"datasets/GPI/post-processing/GPI_mon_mean_anom_moving_window_4deg_jun_aug_earlyszn.nc")
+#gpi_anom_final.to_netcdf(r"datasets/GPI/post-processing/GPI_mon_mean_anom_moving_window_4deg_jun_aug_earlyszn.nc")
+
+
+# CHECK: NaNs should only be over land
+#da = xr.open_dataset(r"datasets/GPI/post-processing/GPI_mon_mean_anom_moving_window_1deg_jun_aug_earlyszn.nc")
+#nan_mask = da.isnull()
+
+#nan_mask["GPI"].mean(dim="time").plot()
+#plt.title("NaN locations")
+#plt.show()
+
+
+
+
 
 ########################################################################################
 # now region mask for subbasin categorization for region generation

@@ -5,8 +5,8 @@ time_coder = xr.coders.CFDatetimeCoder(use_cftime=True)
 def open_and_normalize_datasets(
         fpaths: list[str], 
         weights: list[float] = None, 
-        start_year: int = 1980, 
-        end_year: int = 2014
+        start_year: int = 1850,             # AC: was 1980 originally 
+        end_year: int = 2025                # AC: was 2014 originally
     ): 
     import xarray as xr
 
@@ -42,17 +42,6 @@ def open_and_normalize_datasets(
         variable_names.append(varname)
         da = ds[varname]
         da_raw_arr.append(da)
-
-        # !!!!!! check
-        #print("----- DEBUG DA -----")
-        #print(da)
-        #print("dims:", da.dims)
-        #print("coords:", da.coords)
-        #print("--------------------")
-
-
-
-
 
         da_anom = da.groupby("time.month") - da.groupby("time.month").mean()
         da_anom_std = (da_anom - da_anom.mean(dim = "time"))/(da_anom.std(dim = "time"))
@@ -424,7 +413,7 @@ def generate_regions(
         reconstruct_param = (reconstruct_param["intercept"] + reconstruct_param["slope"]*reconstruct_param["PF"]).mean(dim = "pf")
     """
 
-    da_raw, da = open_and_normalize_datasets(fpaths, weights = weights, start_year=1980, end_year = 2014)
+    da_raw, da = open_and_normalize_datasets(fpaths, weights = weights, start_year=1850, end_year = 2025)       # AC: was 1980 and 2014 originally
 
     if starting_points is None:
         points, da_corr = get_starting_points(da, nRegions, init_point=init_point)
