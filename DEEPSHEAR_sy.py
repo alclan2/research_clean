@@ -102,8 +102,8 @@ dpshear_filt = points[points.within(basin_geom)]
 #dpshear_filt['DEEPSHEAR_anom'] = dpshear_filt['DEEPSHEAR'] - dpshear_mean
 
 # create 4deg grid
-lat_bins = np.arange(-90, 94, 4)  
-lon_bins = np.arange(-180, 184, 4)
+lat_bins = np.arange(-90, 100, 10)  
+lon_bins = np.arange(-180, 190, 10)
 
 # assign each point to a 4deg grid cell
 dpshear_copy = dpshear_filt.copy()
@@ -217,7 +217,7 @@ mesh = ax.pcolormesh(
     pivot.columns,
     pivot.index,
     pivot.values,
-    cmap="coolwarm",
+    cmap="plasma_r",
     shading="auto",
     transform=ccrs.PlateCarree()
 )
@@ -247,17 +247,19 @@ for idx, row in sub_basins.iterrows():
             pe.withStroke(linewidth=3, foreground="white")
         ])
 
-plt.colorbar(mesh, ax=ax, label="Wind Shear")
+plt.colorbar(mesh, ax=ax, label="Wind Shear (m/s)")
 
 # Set tick marks every 10 degrees
 ax.set_xticks(np.arange(lon_min_10, lon_max_10, 10), crs=ccrs.PlateCarree())
 ax.set_yticks(np.arange(lat_min_10, lat_max_10, 10), crs=ccrs.PlateCarree())
 
-ax.set_extent([-113.5, 19.5, 0.5, 59.5],crs=ccrs.PlateCarree())
+ax.set_extent([lon_min, lon_max, lat_min, lat_max],crs=ccrs.PlateCarree())
+ax.set_xlabel('Longitude')
+ax.set_ylabel('Latitude')
 
 # add title
-plt.title("Wind Shear Between 200-850hPa (1940-2024)")
+plt.title("Average Wind Shear Between 200-850hPa in N Atlantic (1940-2024)")
 
 # save plot
-plt.savefig(r"images/TC_density/TC_DEEPSHEAR_NAtl_w_subbasin_overlay.png")
+plt.savefig(r"images/TC_density/TC_DEEPSHEAR_NAtl_w_subbasin_overlay_v2.png")
 plt.show()
