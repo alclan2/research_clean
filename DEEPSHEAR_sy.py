@@ -10,44 +10,32 @@ import cartopy.feature as cfeature
 import matplotlib.patheffects as pe
 import textwrap
 import matplotlib.colors as colors
+import rioxarray
 
 # path to the classified dataset
-ClassifiedData = r"datasets/SyCLoPS/SyCLoPS_classified_ERA5_1940_2024.parquet"
+ClassifiedData = r"datasets/SyCLoPS/SyCLoPS_input_ERA5_4024.parquet"
 
 # open the parquet format file (PyArrow package required)
 df = pd.read_parquet(ClassifiedData)
 
-# TC Nodes:
-#dftc_node=df[(df.Track_Info.str.contains('TC')) & (df.Short_Label=='TC')]
-dftc_node=df[df.Track_Info=='Track_TC']
+#print(df.columns)
 
-# first node: where the TC originates
-tc_origin = (
-    dftc_node
-    .sort_values(by='ISOTIME')
-    .groupby('TID', as_index=False)
-    .head(1)
-)
+# filter columns
+dpshear = df[['TID', 'LON', 'LAT', 'ISOTIME', 'DEEPSHEAR']]
 
-#print(tc_origin.shape)
+# recast ISOTIME
+#dpshear['time'] = pd.to_datetime(dpshear['ISOTIME'])
 
-# last node: where the TC dissipates
-TC_TIDs = tc_origin['TID']
-tc_dissipate = (
-    dftc_node[dftc_node['TID'].isin(TC_TIDs)]
-    .sort_values(by='ISOTIME')
-    .groupby('TID', as_index=False)
-    .tail(1)
-)
+# filter to hurricane szn
+dpshear = dpshear[dpshear['ISOTIME'].dt.month.isin([6, 7, 8, 9, 10])]
 
-#print(tc_dissipate.shape)
+# convert on to -180-180
+dpshear['LON'] = ((dpshear['LON'] + 180) % 360) - 180
 
-# make a new column with YEAR only from ISOTIME
-#dfc_sub["YEAR"] = pd.to_datetime(dfc_sub["ISOTIME"]).dt.year
-
-# read in tc_basins file so we can filter to a specific ocean basin
+# read in basin definition file
 polygons_dict = {}
 
+# read in basin definition file
 with open("tc_basins.dat", "r") as f:
     for line in f:
         line = line.strip()
@@ -90,12 +78,56 @@ basins["geometry"] = basins["geometry"].buffer(0)
 # remove empy geometries
 basins = basins[~basins.geometry.is_empty]
 
+# convert basins' lon to -180-180
+basins["geometry"] = basins["geometry"].apply(
+    lambda geom: transform(
+        lambda x, y: (((x + 180) % 360) - 180, y),
+        geom
+    )
+)
 
+# filter to N Atlantic basin
+region = basins[basins["basin name"] == "N Atlantic"]
 
-# read in tc_subbasins_NAtl file
+points = gpd.GeoDataFrame(
+    dpshear, 
+    geometry = gpd.points_from_xy(dpshear.LON, dpshear.LAT),
+    crs = "EPSG:4326"
+)
+basin_geom = region.geometry.iloc[0]
+dpshear_filt = points[points.within(basin_geom)]
+
+# anomaly calc
+#dpshear_mean = dpshear_filt['DEEPSHEAR'].mean()
+#dpshear_filt['DEEPSHEAR_anom'] = dpshear_filt['DEEPSHEAR'] - dpshear_mean
+
+# create 4deg grid
+lat_bins = np.arange(-90, 94, 4)  
+lon_bins = np.arange(-180, 184, 4)
+
+# assign each point to a 4deg grid cell
+dpshear_copy = dpshear_filt.copy()
+
+dpshear_copy["lat_bin"] = pd.cut(dpshear_copy["LAT"], bins=lat_bins, labels=lat_bins[:-1])
+dpshear_copy["lon_bin"] = pd.cut(dpshear_copy["LON"], bins=lon_bins, labels=lon_bins[:-1])
+
+# calc the mean DEEPSHEAR within each grid cell
+dpshear_grid_means = (
+    dpshear_copy.groupby(["lat_bin", "lon_bin"])["DEEPSHEAR"]
+    .mean()
+    .reset_index()
+)
+
+# convert bins to 2D grid
+dpshear_grid_means["lat"] = dpshear_grid_means["lat_bin"].astype(float)
+dpshear_grid_means["lon"] = dpshear_grid_means["lon_bin"].astype(float)
+
+pivot = dpshear_grid_means.pivot(index="lat", columns="lon", values="DEEPSHEAR")
+
+# read in tc_subbasins_NAtl file for overlay
 sub_polygons_dict = {}
 
-with open("tc_subbasins_NAtl_coarse_v3.dat", "r") as f:
+with open("tc_subbasins_NAtl_v3.dat", "r") as f:
     for line in f:
         line = line.strip()
         if not line or line.startswith("#"):
@@ -149,28 +181,9 @@ def shift_lon(geom):
 # shift lon
 sub_basins["geometry"] = sub_basins["geometry"].apply(shift_lon)
 
-# convert LAT and LON to a new column Points which contains (lon, lat) and convert to a geo data frame so we can filter using polygons
-tc_origin_points = gpd.GeoDataFrame(
-    tc_origin, 
-    geometry = gpd.points_from_xy(tc_origin.LON, tc_origin.LAT),
-    crs = "EPSG:4326"
-)
-
-# filter points to North Atlantic
-tc_origin_filtered = gpd.sjoin(
-    tc_origin_points,
-    basins[basins["basin name"] == "N Atlantic"],
-    how = "inner",
-    predicate = "within"
-)
-
-# convert lon to -180-180 from 0-360
-tc_origin_filtered['LON'] = ((tc_origin_filtered['LON'] + 180) % 360) - 180
-
-# plot tc dissipate points for North Atlantic
-# Create a figure with a geographic projection
-fig = plt.figure(figsize=(8,6))
-ax = plt.axes(projection=ccrs.PlateCarree()) 
+# plot
+fig = plt.figure(figsize=(10,6))
+ax = plt.axes(projection=ccrs.PlateCarree())
 
 # Plot sub-basins first
 sub_basins.plot(
@@ -183,55 +196,31 @@ sub_basins.plot(
     zorder=4
 )
 
-# Scatter the points
-#ax.scatter(
-#    tc_origin_filtered['LON'],
-#    tc_origin_filtered['LAT'],
-#    c='green',
-#    alpha=0.6,
-#    transform=ccrs.PlateCarree()
-#)
-
-# custom colormap so 0 displays as white on the map
-base_cmap = plt.cm.plasma_r
-cmap_colors = base_cmap(np.linspace(0, 1, 256))
-cmap_colors[0] = [1.0, 1.0, 1.0, 1.0]  # white (RGBA)
-plasma_r_zero_white = colors.ListedColormap(cmap_colors)
-
-# set axis bounds for the region (match same dimensions as reg gen plots)
-lon_min, lon_max = -113.5, 19.5
-lat_min, lat_max = 0.5, 59.5
-
-# set up 4x4 degree spacing
-lon_edges = np.arange(lon_min, lon_max + 4, 4)
-lat_edges = np.arange(lat_min, lat_max + 4, 4)
-
-# make the TC density plot
-plt.hist2d(tc_origin_filtered['LON'], tc_origin_filtered['LAT'], bins = [lon_edges, lat_edges], range = [[lon_min, lon_max], [lat_min, lat_max]], cmap = plasma_r_zero_white, transform = ccrs.PlateCarree())
-
-
-# Add coastlines
-ax.coastlines(resolution='50m', color='black', linewidth=1)
-
-# Set labels and title
-ax.set_xlabel('Longitude')
-ax.set_ylabel('Latitude')
-ax.set_title('Origin Density (First Node) of Each TC Track in the North Atlantic (1940-2024)')
-
-# add legend
-plt.colorbar(shrink = 0.7, fraction = 0.05, orientation = 'horizontal')
-
 # find lon/lat min/max for axis bounds
-lon_min = tc_origin_filtered['LON'].min()
-lon_max = tc_origin_filtered['LON'].max()
-lat_min = tc_origin_filtered['LAT'].min()
-lat_max = tc_origin_filtered['LAT'].max()
+lon_min = dpshear_grid_means['lon'].min()
+lon_max = dpshear_grid_means['lon'].max()
+lat_min = dpshear_grid_means['lat'].min()
+lat_max = dpshear_grid_means['lat'].max()
 
 # round to nearest 10deg
 lon_min_10 = np.floor(lon_min / 10) * 10 
 lon_max_10 = np.ceil(lon_max / 10) * 10   
 lat_min_10 = np.floor(lat_min / 10) * 10
 lat_max_10 = np.ceil(lat_max / 10) * 10
+
+# add coastlines
+ax.coastlines()
+#ax.set_extent([-100, 0, 0, 50])
+
+# add color bar
+mesh = ax.pcolormesh(
+    pivot.columns,
+    pivot.index,
+    pivot.values,
+    cmap="coolwarm",
+    shading="auto",
+    transform=ccrs.PlateCarree()
+)
 
 # add sub-basin labels
 for idx, row in sub_basins.iterrows():
@@ -258,11 +247,17 @@ for idx, row in sub_basins.iterrows():
             pe.withStroke(linewidth=3, foreground="white")
         ])
 
+plt.colorbar(mesh, ax=ax, label="Wind Shear")
+
 # Set tick marks every 10 degrees
 ax.set_xticks(np.arange(lon_min_10, lon_max_10, 10), crs=ccrs.PlateCarree())
 ax.set_yticks(np.arange(lat_min_10, lat_max_10, 10), crs=ccrs.PlateCarree())
 
-ax.set_extent([lon_min_10, lon_max_10, lat_min_10, lat_max_10],crs=ccrs.PlateCarree())
+ax.set_extent([-113.5, 19.5, 0.5, 59.5],crs=ccrs.PlateCarree())
 
-plt.savefig(r"images/TC_density/TC_origin_density_NAtl_w_subbasin_overlay_v1.png")
+# add title
+plt.title("Wind Shear Between 200-850hPa (1940-2024)")
+
+# save plot
+plt.savefig(r"images/TC_density/TC_DEEPSHEAR_NAtl_w_subbasin_overlay.png")
 plt.show()
