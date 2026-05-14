@@ -22,8 +22,8 @@ df = pd.read_parquet(ClassifiedData)
 # TC Nodes:
 #dftc_node=df[(df.Track_Info.str.contains('TC')) & (df.Short_Label=='TC')]
 #dftc_node=df[df.Track_Info=='Track_TC']
-dftc_node = df[((df.Adjusted_Label=='TC') | (df.Adjusted_Label=='TD') | (df.Adjusted_Label=='SS(STLC)')) & ~(df['Track_Info'].str.contains('QS', case=False, na=False))]
-#dftc_node = df[((df.Adjusted_Label=='TC')) & ~(df['Track_Info'].str.contains('QS', case=False, na=False))]
+#dftc_node = df[((df.Adjusted_Label=='TC') | (df.Adjusted_Label=='TD') | (df.Adjusted_Label=='SS(STLC)')) & ~(df['Track_Info'].str.contains('QS', case=False, na=False))]
+dftc_node = df[((df.Adjusted_Label=='TC')) | (df.Adjusted_Label=='TD') & ~(df['Track_Info'].str.contains('QS', case=False, na=False))]
 
 #print(dftc_node['Adjusted_Label'].unique())
 
@@ -99,7 +99,7 @@ basins = basins[~basins.geometry.is_empty]
 # read in tc_subbasins_NAtl file
 sub_polygons_dict = {}
 
-with open("tc_subbasins_NAtl_v3.dat", "r") as f:
+with open("tc_subbasins_NAtl_v4.dat", "r") as f:
     for line in f:
         line = line.strip()
         if not line or line.startswith("#"):
@@ -154,15 +154,15 @@ def shift_lon(geom):
 sub_basins["geometry"] = sub_basins["geometry"].apply(shift_lon)
 
 # convert LAT and LON to a new column Points which contains (lon, lat) and convert to a geo data frame so we can filter using polygons
-tc_origin_points = gpd.GeoDataFrame(
-    tc_origin, 
-    geometry = gpd.points_from_xy(tc_origin.LON, tc_origin.LAT),
+tc_dissipate_points = gpd.GeoDataFrame(
+    tc_dissipate, 
+    geometry = gpd.points_from_xy(tc_dissipate.LON, tc_dissipate.LAT),
     crs = "EPSG:4326"
 )
 
 # filter points to North Atlantic
-tc_origin_filtered = gpd.sjoin(
-    tc_origin_points,
+tc_dissipate_filtered = gpd.sjoin(
+    tc_dissipate_points,
     basins[basins["basin name"] == "N Atlantic"],
     how = "inner",
     predicate = "within"
@@ -171,9 +171,9 @@ tc_origin_filtered = gpd.sjoin(
 #print(tc_origin_filtered['Adjusted_Label'].unique())
 
 # convert lon to -180-180 from 0-360
-tc_origin_filtered['LON'] = ((tc_origin_filtered['LON'] + 180) % 360) - 180
+tc_dissipate_filtered['LON'] = ((tc_dissipate_filtered['LON'] + 180) % 360) - 180
 
-# plot tc dissipate points for North Atlantic
+# plot tc origin points for North Atlantic
 # Create a figure with a geographic projection
 fig = plt.figure(figsize=(8,6))
 ax = plt.axes(projection=ccrs.PlateCarree()) 
@@ -190,13 +190,13 @@ sub_basins.plot(
 )
 
 # Scatter the points
-ax.scatter(
-    tc_origin_filtered['LON'],
-    tc_origin_filtered['LAT'],
-    c='blue',
-    alpha=0.6,
-    transform=ccrs.PlateCarree()
-)
+#ax.scatter(
+#    tc_dissipate_filtered['LON'],
+#    tc_dissipate_filtered['LAT'],
+#    c='green',
+#    alpha=0.6,
+#    transform=ccrs.PlateCarree()
+#)
 
 # custom colormap so 0 displays as white on the map
 base_cmap = plt.cm.plasma_r
@@ -205,15 +205,20 @@ cmap_colors[0] = [1.0, 1.0, 1.0, 1.0]  # white (RGBA)
 plasma_r_zero_white = colors.ListedColormap(cmap_colors)
 
 # set axis bounds for the region (match same dimensions as reg gen plots)
-lon_min, lon_max = -113.5, 19.5
-lat_min, lat_max = 0.5, 59.5
+#lon_min, lon_max = -113.5, 19.5
+#lat_min, lat_max = 0.5, 59.5
+# find lon/lat min/max for axis bounds
+lon_min = tc_dissipate_filtered['LON'].min()
+lon_max = tc_dissipate_filtered['LON'].max()
+lat_min = tc_dissipate_filtered['LAT'].min()
+lat_max = tc_dissipate_filtered['LAT'].max()
 
 # set up 4x4 degree spacing
 lon_edges = np.arange(lon_min, lon_max + 4, 4)
 lat_edges = np.arange(lat_min, lat_max + 4, 4)
 
 # make the TC density plot
-#plt.hist2d(tc_origin_filtered['LON'], tc_origin_filtered['LAT'], bins = [lon_edges, lat_edges], range = [[lon_min, lon_max], [lat_min, lat_max]], cmap = plasma_r_zero_white, transform = ccrs.PlateCarree())
+plt.hist2d(tc_dissipate_filtered['LON'], tc_dissipate_filtered['LAT'], bins = [lon_edges, lat_edges], range = [[lon_min, lon_max], [lat_min, lat_max]], cmap = plasma_r_zero_white, transform = ccrs.PlateCarree())
 
 # Add coastlines
 ax.coastlines(resolution='50m', color='black', linewidth=1)
@@ -221,16 +226,10 @@ ax.coastlines(resolution='50m', color='black', linewidth=1)
 # Set labels and title
 ax.set_xlabel('Longitude')
 ax.set_ylabel('Latitude')
-ax.set_title('Origin (First Node) of TCs + TDs + SS(STLC) in the North Atlantic (1940-2024)')
+ax.set_title('Dissipation Density (Last Node) of TCs + TDs in the North Atlantic (1940-2024)')
 
 # add legend
-#plt.colorbar(shrink = 0.7, fraction = 0.05, orientation = 'horizontal')
-
-# find lon/lat min/max for axis bounds
-#lon_min = tc_origin_filtered['LON'].min()
-#lon_max = tc_origin_filtered['LON'].max()
-#lat_min = tc_origin_filtered['LAT'].min()
-#lat_max = tc_origin_filtered['LAT'].max()
+plt.colorbar(shrink = 0.7, fraction = 0.05, orientation = 'horizontal')
 
 # round to nearest 10deg
 lon_min_10 = np.floor(lon_min / 10) * 10 
@@ -269,5 +268,5 @@ ax.set_yticks(np.arange(lat_min_10, lat_max_10, 10), crs=ccrs.PlateCarree())
 
 ax.set_extent([lon_min_10, lon_max_10, lat_min_10, lat_max_10],crs=ccrs.PlateCarree())
 
-plt.savefig(r"images/TC_density/TC_origin_NAtl_w_subbasin_overlay_TC+TD+SS_v2.png")
+plt.savefig(r"images/TC_density/TC_dissipate_density_NAtl_w_subbasin_overlay_TC+TD_v3.png")
 plt.show()

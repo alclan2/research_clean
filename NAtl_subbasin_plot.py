@@ -13,7 +13,7 @@ import matplotlib.patheffects as pe
 # plot tc_basins over world map
 polygons_dict = {}
 
-with open("tc_basins.dat", "r") as f:
+with open("tc_basins_NAtl.dat", "r") as f:
     for line in f:
         line = line.strip()
         if not line or line.startswith("#"):
@@ -72,7 +72,7 @@ basins_NAtl = basins[basins["basin name"] == basin_name]
 # read in NAtl subbasin polygons
 sub_polygons_dict = {}
 
-with open("tc_subbasins_NAtl_v3.dat", "r") as f:
+with open("tc_subbasins_NAtl_v4.dat", "r") as f:
     for line in f:
         line = line.strip()
         if not line or line.startswith("#"):
@@ -175,5 +175,5 @@ gl.xlabel_style = {'size': 10, 'color': 'black'}
 gl.ylabel_style = {'size': 10, 'color': 'black'}
 
 plt.title(f"TC Sub-Basins: {basin_name}")
-plt.savefig("images/sub_basins/NAtlantic_sub_basins_v4.png")
+#plt.savefig("images/sub_basins/NAtlantic_sub_basins_v5.png")
 plt.show()

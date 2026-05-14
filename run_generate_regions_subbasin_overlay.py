@@ -15,7 +15,7 @@ import matplotlib.patheffects as pe
 
 # select dataset for clustering
 fpaths = [
-    r"datasets/GPI/post-processing/GPI_mon_mean_anom_moving_window_1deg_sep_oct_lateszn.nc"
+    r"datasets/GPI/post-processing/GPI_mon_mean_anom_moving_window_1deg_jun_oct.nc"
 ]
 
 # call clustering function
@@ -24,7 +24,7 @@ da_region, reconstructed = generate_regions(fpaths, nRegions = 10, nIter = 5)
 # read in NAtl subbasin polygons
 sub_polygons_dict = {}
 
-with open("tc_subbasins_NAtl_v3.dat", "r") as f:
+with open("tc_subbasins_NAtl_v4.dat", "r") as f:
     for line in f:
         line = line.strip()
         if not line or line.startswith("#"):
@@ -172,7 +172,7 @@ for idx, row in sub_basins.iterrows():
     )
 
 # format and save
-plt.title("GPI Monthly Mean Anomaly in North Atlantic Late Season (Sep-Oct, 1960-2015) (10 regions, 1deg)")
+plt.title("GPI Monthly Mean Anomaly in North Atlantic (Jun-Oct, 1960-2015) (10 regions, 1deg)")
 plt.tight_layout()
-plt.savefig("images/reg_gen_w_subbasin/detailed subbasins/GPI/GPI_mon_mean_anom_moving_window_1deg_lateszn_10reg_with_subbasins_detailed_v3.png")
+#plt.savefig("images/reg_gen_w_subbasin/detailed subbasins/GPI/GPI_mon_mean_anom_moving_window_1deg_wholeszn_10reg_with_subbasins_detailed_v4.png")
 plt.show()
