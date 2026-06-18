@@ -145,50 +145,55 @@ sst = sst.rio.set_spatial_dims(x_dim="lon", y_dim="lat")
 region = basins[basins["basin name"] == "N Atlantic"]
 
 # filter out Arctic and continental US sub-basins
-region_subbasins = sub_basins[sub_basins["sub_basin_name"].isin(["Central Atlantic"])]
+#region_subbasins = sub_basins[sub_basins["sub_basin_name"].isin(["Central Atlantic"])]
 
 sst_filt = (
     sst
+    .where(sst.time.dt.month.isin([6, 7, 8, 9, 10]), drop=True)
     .rio.clip(region.geometry, region.crs, drop=True)
-    .rio.clip(region_subbasins.geometry, region_subbasins.crs, drop=True)
     .sel(time=slice(None, "2025-12-31"))
 )
 
 # calculate the climatological mean
 monthly_clim = sst_filt.groupby("time.month").mean("time")
 
-# filter to specific months
-monthly_clim_szn = monthly_clim.sel(month=slice(10))
+# calculate the sst anomaly
+sst_anom = sst_filt.groupby("time.month") - monthly_clim
 
-# average across selected months
-sst_mean_szn = monthly_clim_szn.mean(dim="month")
+print(sst_anom.groupby("time.month").mean(("time","lat","lon")))
 
-#print(monthly_clim_szn.head())
+# save filtered datasets
+sst_anom.to_netcdf("datasets/COBE2 SST/post-processing/SST_mon_mean_anom_full_dataset_clim_jun_oct.nc")
 
-# plot the sst's for hurricane season
-fig = plt.figure(figsize=(8,6))
-ax = plt.axes(projection=ccrs.PlateCarree()) 
+print(sst_anom.head())
 
-# Plot sub-basins first
-sub_basins.plot(
-    ax=ax,
-    facecolor='none',
-    edgecolor='red',
-    path_effects=[pe.withStroke(linewidth=3, foreground='white')],
-    linewidth=1,
-    transform=ccrs.PlateCarree(),
-    zorder=4
-)
 
-sst_mean_szn.plot(
-    ax=ax,
-    transform=ccrs.PlateCarree(),
-    cmap="coolwarm",
-    cbar_kwargs={"label": "SST (°C)"}
-)
+#####################################################################################
 
-ax.coastlines()
-ax.set_extent([-70, -20, 15, 50],crs=ccrs.PlateCarree())
+## plot the sst's for hurricane season
+#fig = plt.figure(figsize=(8,6))
+#ax = plt.axes(projection=ccrs.PlateCarree()) 
+
+## Plot sub-basins first
+#sub_basins.plot(
+#    ax=ax,
+#    facecolor='none',
+#    edgecolor='red',
+#    path_effects=[pe.withStroke(linewidth=3, foreground='white')],
+#    linewidth=1,
+#    transform=ccrs.PlateCarree(),
+#    zorder=4
+#)
+
+#sst_mean_szn.plot(
+#    ax=ax,
+#    transform=ccrs.PlateCarree(),
+#    cmap="coolwarm",
+#    cbar_kwargs={"label": "SST (°C)"}
+#)
+
+#ax.coastlines()
+#ax.set_extent([-70, -20, 15, 50],crs=ccrs.PlateCarree())
 
 # add sub-basin labels
 #for idx, row in sub_basins.iterrows():
@@ -215,41 +220,30 @@ ax.set_extent([-70, -20, 15, 50],crs=ccrs.PlateCarree())
 #            pe.withStroke(linewidth=3, foreground="white")
 #        ])
 
-ax.set_xlabel('Longitude')
-ax.set_ylabel('Latitude')
+#ax.set_xlabel('Longitude')
+#ax.set_ylabel('Latitude')
 
-# Add gridlines with labels
-gl = ax.gridlines(
-    draw_labels=True,
-    linewidth=0.1,
-    color='gray',
-    linestyle='--'
-)
+## Add gridlines with labels
+#gl = ax.gridlines(
+#    draw_labels=True,
+#    linewidth=0.1,
+#    color='gray',
+#    linestyle='--'
+#)
 
-gl.xlocator = plt.MultipleLocator(10)  # longitude every 10°
-gl.ylocator = plt.MultipleLocator(10)  # latitude every 10°
-gl.xlabel_style = {'size': 10, 'color': 'black'}
-gl.ylabel_style = {'size': 10, 'color': 'black'}
+#gl.xlocator = plt.MultipleLocator(10)  # longitude every 10°
+#gl.ylocator = plt.MultipleLocator(10)  # latitude every 10°
+#gl.xlabel_style = {'size': 10, 'color': 'black'}
+#gl.ylabel_style = {'size': 10, 'color': 'black'}
 
-ax.set_title("Mean SST (October, 1850-2025)")
+#ax.set_title("Mean SST (October, 1850-2025)")
 
-plt.savefig("images/SST_CtrlAtl_mon_mean_oct.png")
-plt.show()
-
-
+#plt.savefig("images/SST_CtrlAtl_mon_mean_oct.png")
+#plt.show()
 
 
 
 
-
-
-# calculate the sst anomaly
-#sst_anom = sst_filt.groupby("time.month") - monthly_clim
-
-#print(sst_anom.groupby("time.month").mean(("time","lat","lon")))
-
-# save filtered datasets
-#sst_anom.to_netcdf("SST_mon_mean_anom.nc")
 
 ######################################################################################################
 

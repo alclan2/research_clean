@@ -1,0 +1,20 @@
+#,Regular,latitude-longitude,polygonal,regions,delineating,TC,subbasins,NAtl
+#,
+#,Structure,of,file,is,as,follows:
+#
+#,<number,of,subbasins>
+#,<sub,basin,name>,,<number,of,vertices,in,polygon>,,<lon,of,vertices>,,<lat,of,vertices>
+#
+#,Note,that,coordinate,of,vertices,must,be,specified,in,counter-clockwise,order
+#
+#10
+"Mid-latitudinal US/CA",5,255,255,265,280,280,50,35,35,50,50
+"Arctic",10,255,255,310,310,338.35,340,350,350,20,20,90,50,50,45,45,50,50,70,70,90
+"Mediterranean Sea",6,0,354,354,20,20,0,42,42,30,30,50,50
+"Central Atlantic",7,310,300,300,305,315,335,338.35,    45,35,20.25,20,20,35,45
+"Tropics",20,350,315,305,300,285,280,278,275,275,272,270,268,278,284,284,284,282,20,20,355,         20,20,20,20.25,21,23.5,23.25,23,22,22,17,17,8.5,8.5,8.5,3,0,0,5.5,5.5
+"Gulf",10,278,278,255,255,263,270,272,275,275,278,24,35,35,25,17,17,22,22,23,23.5
+"Western Africa",5,20,354,350,355,20,      30,30,20,5.5,5.5
+"Northern Europe",4,350,350,20,20,70,50,50,70
+"Eastern Seaboard",10,300,310,310,280,265,278,278,280,285,300,         35,45,50,50,35,35,23.25,23.5,21,20.25
+"Western Seaboard",12,335,315,350,354,354,354,354,0,0,355,355,340,      35,20,20,30,35,35,42,42,50,50,50,50

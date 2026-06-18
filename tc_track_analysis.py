@@ -14,7 +14,7 @@ import seaborn as sns
 
 # read in subbasin table with starting and ending nodes
 ds = pd.read_csv(r"datasets/SyCLoPS/tc_track_subbasin_table.csv")
-print(ds.head())
+#print(ds.head())
 
 # find fraction of TCs that originate or dissipate per subbasin
 sb_start = ds.groupby('sub_basin_start').size()
@@ -38,6 +38,9 @@ tc_dissipate = (
     .sort_values()
 )
 
+#print(tc_origin)
+#print(tc_dissipate)
+
 # combine origin and dissipate
 orig_to_diss = pd.concat(
     [tc_origin, tc_dissipate],
@@ -49,9 +52,9 @@ orig_to_diss = orig_to_diss.fillna(0)
 
 orig_to_diss = orig_to_diss.sort_values('Origin', ascending=False)
 
-print(orig_to_diss)
-print(orig_to_diss['Origin'].sum())
-print(orig_to_diss['Dissipation'].sum())
+#print(orig_to_diss)
+#print(orig_to_diss['Origin'].sum())
+#print(orig_to_diss['Dissipation'].sum())
 
 ## plot
 #ax = orig_to_diss.plot(
@@ -72,7 +75,7 @@ print(orig_to_diss['Dissipation'].sum())
 ## Force percent scale
 #ax.set_ylim(0, 40)
 
-## Legend
+# Legend
 #ax.legend(title='TC Stage')
 
 #plt.tight_layout()
@@ -89,13 +92,15 @@ pivot = pd.pivot_table(
     aggfunc="count",
     fill_value=0
 )
-tracks = pivot.div(pivot.sum(axis=1), axis=0).mul(100).round(0)
+#tracks = pivot.div(pivot.sum(axis=1), axis=0).mul(100).round(0)
 
-# remove land regions
-tracks = tracks.drop(['Mid-latitudinal US/CA', 'Western Africa'])
+print(pivot)
+
+## remove land regions
+#tracks = tracks.drop(['Mid-latitudinal US/CA', 'Western Africa'])
 
 # add line breaks for plotting ease
-tracks_wrapped = tracks.copy()
+tracks_wrapped = pivot.copy()
 tracks_wrapped.columns = tracks_wrapped.columns.str.replace(" ", "\n")
 
 # plot as heatmap
@@ -105,17 +110,18 @@ sns.heatmap(
     tracks_wrapped,
     cmap="Blues",
     annot=True,  
+    fmt='d', 
     linewidths=0.3
 )
 
 plt.xlabel("Dissipation Sub-Basin", labelpad=10)
 plt.ylabel("Origin Sub-Basin", labelpad=10)
 plt.xticks(rotation=45)
-plt.title("TC Dissipation Sub-Basin by Origin Location (%)", pad=20)
+plt.title("TC Dissipation Sub-Basin by Origin Location (Count of TCs)", pad=20)
 
 plt.tight_layout()
-#plt.savefig("images/data_viz/tc_track_heatmap_v2.png")
-#plt.show()
+plt.savefig("images/data_viz/tc_track_heatmap_counts.png")
+plt.show()
 
 
 

@@ -154,6 +154,7 @@ def shift_lon(geom):
 
 # shift lon
 sub_basins["geometry"] = sub_basins["geometry"].apply(shift_lon)
+basins["geometry"] = sub_basins["geometry"].apply(shift_lon)
 
 # convert lon to -180-180 from 0-360
 tc_origin['LON'] = ((tc_origin['LON'] + 180) % 360) - 180
@@ -173,65 +174,68 @@ tc_dissipate_points = gpd.GeoDataFrame(
     crs = "EPSG:4326"
 )
 
-# filter points to North Atlantic
+# filter points to north atlantic basin
 tc_origin_filtered = gpd.sjoin(
     tc_origin_points,
-    sub_basins[sub_basins["sub_basin_name"] == "Subtropical Atlantic"],
+    sub_basins[sub_basins["sub_basin_name"] == ['Northeastern Seaboard', 'Gulf (A)', 'Gulf (B)', 'Mid-latitudinal US/CA', 'Southeastern Seaboard', 'Arctic', 'Central Atlantic', 'Caribbean', 'Eastern Tropics', 'Deep Tropics', 'Western Africa', 'Mid-latitudinal Atlantic', 'Mediterranean Sea', 'Northern Europe', 'Subtropical Atlantic']],
     how = "inner",
     predicate = "within"
 )
 
 tc_dissipate_filtered = gpd.sjoin(
     tc_dissipate_points,
-    sub_basins[sub_basins["sub_basin_name"] == 'Subtropical Atlantic'],
+    sub_basins[sub_basins["sub_basin_name"] == ['Northeastern Seaboard', 'Gulf (A)', 'Gulf (B)', 'Mid-latitudinal US/CA', 'Southeastern Seaboard', 'Arctic', 'Central Atlantic', 'Caribbean', 'Eastern Tropics', 'Deep Tropics', 'Western Africa', 'Mid-latitudinal Atlantic', 'Mediterranean Sea', 'Northern Europe', 'Subtropical Atlantic']],
     how = "inner",
     predicate = "within"
 )
 
+print(tc_origin_filtered['sub_basin_name'].unique())
+print(tc_origin_filtered['sub_basin_name'].unique())
+
 # plot tc dissipate points for North Atlantic
 # Create a figure with a geographic projection
-fig = plt.figure(figsize=(8,6))
-ax = plt.axes(projection=ccrs.PlateCarree()) 
+#fig = plt.figure(figsize=(8,6))
+#ax = plt.axes(projection=ccrs.PlateCarree()) 
 
 # Plot sub-basins first
-sub_basins.plot(
-    ax=ax,
-    facecolor='none',
-    edgecolor='red',
-    path_effects=[pe.withStroke(linewidth=3, foreground='white')],
-    linewidth=1,
-    transform=ccrs.PlateCarree(),
-    zorder=4
-)
+#sub_basins.plot(
+#    ax=ax,
+#    facecolor='none',
+#    edgecolor='red',
+#    path_effects=[pe.withStroke(linewidth=3, foreground='white')],
+#    linewidth=1,
+#    transform=ccrs.PlateCarree(),
+#    zorder=4
+#)
 
 # Scatter the points
-ax.scatter(
-    tc_dissipate_filtered['LON'],
-    tc_dissipate_filtered['LAT'],
-    c='blue',
-    alpha=0.6,
-    transform=ccrs.PlateCarree()
-)
+#ax.scatter(
+#    tc_dissipate_filtered['LON'],
+#    tc_dissipate_filtered['LAT'],
+#    c='blue',
+#    alpha=0.6,
+#    transform=ccrs.PlateCarree()
+#)
 
 # find lon/lat min/max for axis bounds
-lon_min = tc_dissipate_filtered['LON'].min()
-lon_max = tc_dissipate_filtered['LON'].max()
-lat_min = tc_dissipate_filtered['LAT'].min()
-lat_max = tc_dissipate_filtered['LAT'].max()
+#lon_min = tc_dissipate_filtered['LON'].min()
+#lon_max = tc_dissipate_filtered['LON'].max()
+#lat_min = tc_dissipate_filtered['LAT'].min()
+#lat_max = tc_dissipate_filtered['LAT'].max()
 
 # Add coastlines
-ax.coastlines(resolution='50m', color='black', linewidth=1)
+#ax.coastlines(resolution='50m', color='black', linewidth=1)
 
 # Set labels and title
-ax.set_xlabel('Longitude')
-ax.set_ylabel('Latitude')
-ax.set_title('Dissipation Nodes of TCs in the Subtropical Atlantic (North Atlantic, 1940-2024)')
+#ax.set_xlabel('Longitude')
+#ax.set_ylabel('Latitude')
+#ax.set_title('Dissipation Nodes of TCs in the Subtropical Atlantic (North Atlantic, 1940-2024)')
 
 # round to nearest 10deg
-lon_min_10 = np.floor(lon_min / 10) * 10 
-lon_max_10 = np.ceil(lon_max / 10) * 10   
-lat_min_10 = np.floor(lat_min / 10) * 10
-lat_max_10 = np.ceil(lat_max / 10) * 10
+#lon_min_10 = np.floor(lon_min / 10) * 10 
+#lon_max_10 = np.ceil(lon_max / 10) * 10   
+#lat_min_10 = np.floor(lat_min / 10) * 10
+#lat_max_10 = np.ceil(lat_max / 10) * 10
 
 
 # CHECK
@@ -239,41 +243,39 @@ lat_max_10 = np.ceil(lat_max / 10) * 10
 #print(type(lon_min_10), type(lon_max_10))
 
 
-
-
 # add sub-basin labels
-for idx, row in sub_basins.iterrows():
-    point = row.geometry.centroid
-    name = row["sub_basin_name"]
+#for idx, row in sub_basins.iterrows():
+#    point = row.geometry.centroid
+#    name = row["sub_basin_name"]
 
-    # wrap text (adjust width as needed)
-    name_wrapped = "\n".join(textwrap.wrap(name, width=10, break_long_words=False, break_on_hyphens=False))
+#    # wrap text (adjust width as needed)
+#    name_wrapped = "\n".join(textwrap.wrap(name, width=10, break_long_words=False, break_on_hyphens=False))
     
-    if (lon_min_10 <= point.x <= lon_max_10) and (lat_min_10 <= point.y <= lat_max_10):
-        txt = ax.text(
-            point.x, point.y,
-            name_wrapped,
-            transform=ccrs.PlateCarree(),
-            fontsize=7,
-            weight='bold',
-            ha='center',
-            va='center',
-            color='black',
-            zorder=4
-        )
+#    if (lon_min_10 <= point.x <= lon_max_10) and (lat_min_10 <= point.y <= lat_max_10):
+#        txt = ax.text(
+#            point.x, point.y,
+#            name_wrapped,
+#            transform=ccrs.PlateCarree(),
+#            fontsize=7,
+#            weight='bold',
+#            ha='center',
+#            va='center',
+#            color='black',
+#            zorder=4
+#        )
         
-        txt.set_path_effects([
-            pe.withStroke(linewidth=3, foreground="white")
-        ])
+#        txt.set_path_effects([
+#            pe.withStroke(linewidth=3, foreground="white")
+#        ])
 
 # Set tick marks every 10 degrees
-ax.set_xticks(np.arange(lon_min_10, lon_max_10, 10), crs=ccrs.PlateCarree())
-ax.set_yticks(np.arange(lat_min_10, lat_max_10, 10), crs=ccrs.PlateCarree())
+#ax.set_xticks(np.arange(lon_min_10, lon_max_10, 10), crs=ccrs.PlateCarree())
+#ax.set_yticks(np.arange(lat_min_10, lat_max_10, 10), crs=ccrs.PlateCarree())
 
-ax.set_extent([lon_min_10, lon_max_10+20, lat_min_10-10, lat_max_10],crs=ccrs.PlateCarree())
+#ax.set_extent([lon_min_10, lon_max_10+20, lat_min_10-10, lat_max_10],crs=ccrs.PlateCarree())
 
-plt.savefig(r"images/data_viz/TC_diss_SubTrop.png")
-plt.show()
+#plt.savefig(r"images/data_viz/TC_diss_SubTrop.png")
+#plt.show()
 
 
 
@@ -282,70 +284,69 @@ plt.show()
 
 ################################################################################################
 
-
+# get a pivot table of count/share of TCs that origin and dissipate by sub basin
 
 
 
 # merge start and end nodes on TID
-#tc_track = (
-#    tc_origin_filtered
-#    .merge(
-#        tc_dissipate_filtered,
-#        on="TID",
-#        suffixes=("_start", "_end")
-#    )
-#)
+tc_track = (
+    tc_origin_filtered
+    .merge(
+        tc_dissipate_filtered,
+        on="TID",
+        suffixes=("_start", "_end")
+    )
+)
 
-#print(tc_track.columns)
+# create year column
+tc_track['YEAR_start'] = tc_track['ISOTIME_start'].dt.year
 
 # filter to only columns we need
-#tc_track = tc_track[['TID', 'LON_start', 'LAT_start', 'LON_end', 'LAT_end']]
+tc_track = tc_track[['TID', 'LON_start', 'LAT_start', 'LON_end', 'LAT_end', 'YEAR_start']]
 
 #print(tc_track.columns)
-#print(tc_track.head())
+print(tc_track.head())
 
 # join sub basin name for starting and ending points
-#start_gdf = gpd.GeoDataFrame(
-#    tc_track,
-#    geometry=gpd.points_from_xy(
-#        tc_track.LON_start,
-#        tc_track.LAT_start
-#    ),
-#    crs=sub_basins.crs
-#)
+start_gdf = gpd.GeoDataFrame(
+    tc_track,
+    geometry=gpd.points_from_xy(
+        tc_track.LON_start,
+        tc_track.LAT_start
+    ),
+    crs=sub_basins.crs
+)
 
-#end_gdf = gpd.GeoDataFrame(
-#    tc_track,
-#    geometry=gpd.points_from_xy(
-#        tc_track.LON_end,
-#        tc_track.LAT_end
-#    ),
-#    crs=sub_basins.crs
-#)
+end_gdf = gpd.GeoDataFrame(
+    tc_track,
+    geometry=gpd.points_from_xy(
+        tc_track.LON_end,
+        tc_track.LAT_end
+    ),
+    crs=sub_basins.crs
+)
 
-#start_join = gpd.sjoin(
-#    start_gdf,
-#    sub_basins[['sub_basin_name', 'geometry']],
-#    how='left',
-#    predicate='within'
-#)
+start_join = gpd.sjoin(
+    start_gdf,
+    sub_basins[['sub_basin_name', 'geometry']],
+    how='left',
+    predicate='within'
+)
 
-#end_join = gpd.sjoin(
-#    end_gdf,
-#    sub_basins[['sub_basin_name', 'geometry']],
-#    how='left',
-#    predicate='within'
-#)
+end_join = gpd.sjoin(
+    end_gdf,
+    sub_basins[['sub_basin_name', 'geometry']],
+    how='left',
+    predicate='within'
+)
 
-#tc_track['sub_basin_start'] = start_join['sub_basin_name']
-#tc_track['sub_basin_end'] = end_join['sub_basin_name']
+tc_track['sub_basin_start'] = start_join['sub_basin_name']
+tc_track['sub_basin_end'] = end_join['sub_basin_name']
 
-#print(tc_track.head())
-
-#print(tc_track.shape)
+print(tc_track['sub_basin_start'].unique())
 
 # save table
-#tc_track.to_csv("datasets/SyCLoPS/tc_track_subbasin_table.csv", index = False)
+tc_track.to_csv("datasets/SyCLoPS/tc_track_subbasin_table_withYear.csv", index = False)
 
 
 
