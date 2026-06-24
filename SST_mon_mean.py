@@ -144,9 +144,10 @@ sst = sst.rio.set_spatial_dims(x_dim="lon", y_dim="lat")
 # filter to N Atlantic basin
 region = basins[basins["basin name"] == "N Atlantic"]
 
-# filter out Arctic and continental US sub-basins
+## filter out Arctic and continental US sub-basins
 #region_subbasins = sub_basins[sub_basins["sub_basin_name"].isin(["Central Atlantic"])]
 
+# filter to hurricane season
 sst_filt = (
     sst
     .where(sst.time.dt.month.isin([6, 7, 8, 9, 10]), drop=True)
@@ -154,18 +155,21 @@ sst_filt = (
     .sel(time=slice(None, "2025-12-31"))
 )
 
-# calculate the climatological mean
-monthly_clim = sst_filt.groupby("time.month").mean("time")
+# calculate the mean SST (not for anomaly calc)
+annual_mean = sst_filt.groupby("time.year").mean("time") 
 
-# calculate the sst anomaly
-sst_anom = sst_filt.groupby("time.month") - monthly_clim
+## calculate the climatological mean
+#monthly_clim = sst_filt.groupby("time.month").mean("time")
 
-print(sst_anom.groupby("time.month").mean(("time","lat","lon")))
+## calculate the sst anomaly
+#sst_anom = sst_filt.groupby("time.month") - monthly_clim
+
+print(annual_mean)
 
 # save filtered datasets
-sst_anom.to_netcdf("datasets/COBE2 SST/post-processing/SST_mon_mean_anom_full_dataset_clim_jun_oct.nc")
+annual_mean.to_netcdf("datasets/COBE2 SST/post-processing/SST_annual_mean_notAnomaly_jun_oct.nc")
 
-print(sst_anom.head())
+#print(sst_anom.head())
 
 
 #####################################################################################

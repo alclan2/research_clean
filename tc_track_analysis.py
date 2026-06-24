@@ -13,7 +13,7 @@ import matplotlib.colors as colors
 import seaborn as sns
 
 # read in subbasin table with starting and ending nodes
-ds = pd.read_csv(r"datasets/SyCLoPS/tc_track_subbasin_table.csv")
+ds = pd.read_csv(r"datasets/SyCLoPS/tc_track_subbasin_coarse_table.csv")
 #print(ds.head())
 
 # find fraction of TCs that originate or dissipate per subbasin
@@ -73,72 +73,81 @@ orig_to_diss = orig_to_diss.sort_values('Origin', ascending=False)
 #ax.set_title('Share of TC Origin/Dissipation per Sub-Basin (North Atlantic)')
 
 ## Force percent scale
-#ax.set_ylim(0, 40)
+#ax.set_ylim(0, 60)
 
-# Legend
+## Legend
 #ax.legend(title='TC Stage')
 
 #plt.tight_layout()
-#plt.savefig("images/data_viz/tc_track_sb_fraction.png")
+#plt.savefig("images/data_viz/tc_track_sb_coarse_fraction.png")
 #plt.show()
 
+#################################################################################
 
 # now find fraction of sub basin end per sub basin start
 pivot = pd.pivot_table(
-    ds,
+   ds,
     values="TID",
     index="sub_basin_start",
     columns="sub_basin_end",
     aggfunc="count",
     fill_value=0
 )
-#tracks = pivot.div(pivot.sum(axis=1), axis=0).mul(100).round(0)
+tracks = pivot.div(pivot.sum(axis=1), axis=0).mul(100).round(0)
 
-print(pivot)
+#print(pivot)
 
-## remove land regions
-#tracks = tracks.drop(['Mid-latitudinal US/CA', 'Western Africa'])
+# remove land regions
+tracks = tracks.drop(['Mid-latitudinal US/CA', 'Western Africa'])
 
 # add line breaks for plotting ease
 tracks_wrapped = pivot.copy()
 tracks_wrapped.columns = tracks_wrapped.columns.str.replace(" ", "\n")
 
-# plot as heatmap
-plt.figure(figsize=(14, 8))
+## plot as heatmap
+#plt.figure(figsize=(14, 8))
 
-sns.heatmap(
-    tracks_wrapped,
-    cmap="Blues",
-    annot=True,  
-    fmt='d', 
-    linewidths=0.3
-)
-
-plt.xlabel("Dissipation Sub-Basin", labelpad=10)
-plt.ylabel("Origin Sub-Basin", labelpad=10)
-plt.xticks(rotation=45)
-plt.title("TC Dissipation Sub-Basin by Origin Location (Count of TCs)", pad=20)
-
-plt.tight_layout()
-plt.savefig("images/data_viz/tc_track_heatmap_counts.png")
-plt.show()
-
-
-
-## stacked bar chart
-#ax = tracks.plot(
-#    kind="bar",
-#    stacked=True,
-#    figsize=(12, 6)
+#sns.heatmap(
+#    tracks_wrapped,
+#    cmap="Blues",
+#    annot=True,  
+#    fmt='d', 
+#    linewidths=0.3
 #)
 
-#ax.set_ylabel("%")
-#ax.set_xlabel("Origin Sub-Basin")
-#ax.set_title("TC Dissipation Sub-Basin by Origin Location")
+#plt.xlabel("Dissipation Sub-Basin", labelpad=10)
+#plt.ylabel("Origin Sub-Basin", labelpad=10)
+#plt.xticks(rotation=45)
+#plt.title("TC Dissipation Sub-Basin by Origin Location (Count of TCs)", pad=20)
 
-#plt.legend(title="Dissipation Sub-Basin", bbox_to_anchor=(1.05, 1))
 #plt.tight_layout()
+#plt.savefig("images/data_viz/tc_track_heatmap_coarse_counts.png")
 #plt.show()
+
+##################################################################################
+
+# stacked bar chart
+cmap = plt.cm.tab20
+colors = cmap(np.linspace(0.4, 0.9, tracks.shape[1]))
+
+#colors = sns.color_palette("Set2", n_colors=tracks.shape[1])
+
+ax = tracks.plot(
+    kind="bar",
+    stacked=True,
+    figsize=(12, 6),
+    color=colors
+)
+
+ax.set_ylabel("%")
+ax.set_xlabel("Origin Sub-Basin")
+ax.set_title("TC Dissipation Sub-Basin by Origin Location")
+
+plt.legend(title="Dissipation Sub-Basin", bbox_to_anchor=(1.05, 1))
+plt.xticks(rotation=45)
+plt.tight_layout()
+#plt.savefig("images/data_viz/tc_track_sb_coarse_fraction_stacked.png")
+plt.show()
 
 
 #print(tracks.head())

@@ -68,7 +68,7 @@ basins["geometry"] = basins["geometry"].apply(
 # read in tc_subbasins_NAtl file
 sub_polygons_dict = {}
 
-with open("tc_subbasins_NAtl.dat", "r") as f:
+with open("tc_subbasins_NAtl_v5.dat", "r") as f:
     for line in f:
         line = line.strip()
         if not line or line.startswith("#"):
@@ -164,9 +164,10 @@ region = basins[basins["basin name"] == "N Atlantic"]
 # filter out Arctic and continental US sub-basins
 region_subbasins = sub_basins[
     sub_basins["sub_basin_name"].isin([
-        "Gulf","Caribbean","Northeastern Seaboard",
-        "Tropical Atlantic","Subtropical Atlantic",
-        "Mid-latitudinal Atlantic","Southeastern Seaboard"
+        "Gulf (A)", "Gulf (B)", "Caribbean","Northeastern Seaboard",
+        "Eastern Tropics","Subtropical Atlantic",
+        "Mid-latitudinal Atlantic","Southeastern Seaboard", "Deep Tropics",
+        "Northern Europe", "Central Atlantic", "Mediterranean Sea", "Western Africa"
     ])
 ]
 
@@ -180,28 +181,28 @@ gpi_full = (
 # change to 4deg grid spacing
 gpi_coarse = gpi_full.coarsen(lat=16, lon=16, boundary="trim").mean()
 
-# remove edges for rolling climatology
-start = str(int(gpi_coarse.time.dt.year.min()) + 10)
-end   = str(int(gpi_coarse.time.dt.year.max()) - 10)
+## remove edges for rolling climatology
+#start = str(int(gpi_coarse.time.dt.year.min()) + 10)
+#end   = str(int(gpi_coarse.time.dt.year.max()) - 10)
 
-gpi_filt = gpi_coarse.sel(time=slice(start, end))
+#gpi_filt = gpi_coarse.sel(time=slice(start, end))
 
-# anomaly calc: use moving mean for year n (year-10, year+10)
-rolling_clim = (
-    gpi_coarse
-    .groupby("time.month")
-    .apply(lambda x: x.sortby("time").rolling(time=21, center=True).mean())
-)
-gpi_anom = gpi_filt - rolling_clim.sel(time=gpi_filt.time)
+## anomaly calc: use moving mean for year n (year-10, year+10)
+#rolling_clim = (
+#    gpi_coarse
+#    .groupby("time.month")
+#    .apply(lambda x: x.sortby("time").rolling(time=21, center=True).mean())
+#)
+#gpi_anom = gpi_filt - rolling_clim.sel(time=gpi_filt.time)
 
-# filter to specific months only
-gpi_anom_early_season = gpi_anom.sel(time=gpi_anom.time.dt.month.isin([6,7,8]))
+## filter to specific months only
+#gpi_anom_early_season = gpi_anom.sel(time=gpi_anom.time.dt.month.isin([6,7,8]))
 
-# Compute mask so it's no longer a lazy dask array
-mask = gpi_anom_early_season.notnull().any(dim="time").compute()
+## Compute mask so it's no longer a lazy dask array
+#mask = gpi_anom_early_season.notnull().any(dim="time").compute()
 
-# Now drop land points properly
-gpi_anom_final = gpi_anom_early_season.where(mask, drop=True)
+## Now drop land points properly
+#gpi_anom_final = gpi_anom_early_season.where(mask, drop=True)
 
 # save filtered datasets
 #gpi_anom_final.to_netcdf(r"datasets/GPI/post-processing/GPI_mon_mean_anom_moving_window_4deg_jun_aug_earlyszn.nc")
@@ -214,6 +215,33 @@ gpi_anom_final = gpi_anom_early_season.where(mask, drop=True)
 #nan_mask["GPI"].mean(dim="time").plot()
 #plt.title("NaN locations")
 #plt.show()
+
+##########################################################################
+# anomaly calc for whole time period for time series
+
+# climatological mean
+gpi_clim = gpi_coarse.groupby("time.month").mean("time")
+gpi_anom = gpi_coarse.groupby("time.month") - gpi_clim
+
+# filter to specific months only
+gpi_anom_szn = gpi_anom.sel(time=gpi_anom.time.dt.month.isin([6,7,8,9,10]))
+
+# Compute mask so it's no longer a lazy dask array
+mask = gpi_anom_szn.notnull().any(dim="time").compute()
+
+# Now drop land points properly
+gpi_anom_final = gpi_anom_szn.where(mask, drop=True)
+
+remaining_nan_cells = (
+    gpi_anom_final.isnull()
+    .all("time")
+    .sum()
+)
+
+print(remaining_nan_cells)
+print(remaining_nan_cells.compute())
+
+
 
 
 

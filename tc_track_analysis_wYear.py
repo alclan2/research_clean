@@ -77,7 +77,7 @@ import numpy as np
 
 ############################################################################################
 
-# SST anomaly overlay
+# SST overlay
 
 
 
@@ -142,7 +142,9 @@ sub_basins["geometry"] = sub_basins["geometry"].apply(shift_lon)
 
 
 # load COBE data set
-ds = xr.open_dataset("datasets/COBE2 SST/post-processing/SST_mon_mean_anom_full_dataset_clim_jun_oct.nc")
+ds = xr.open_dataset("datasets/COBE2 SST/post-processing/SST_annual_mean_notAnomaly_jun_oct.nc")
+
+#print(ds)
 
 # build sub basin mask
 sb = regionmask.Regions(
@@ -154,13 +156,15 @@ sb = regionmask.Regions(
 mask = sb.mask(ds.sst)
 
 # calc sub basin means
-sst_year = (
-    ds.sst
-    .where(ds.time.dt.month.isin([6,7,8,9,10]), drop=True)
-    .groupby("time.year")
-    .mean("time")
-)
-#sst_year = sst_year.sel(year=slice(1940, 2024)) # to match SyCLoPS
+#sst_year = (
+#    ds.sst
+#    .where(ds.time.dt.month.isin([6,7,8,9,10]), drop=True)
+#    .groupby("time.year")
+#    .mean("time")
+#)
+
+# use this line if using the annual mean dataset (not anomaly datasets)
+sst_year = ds.sst
 
 sb_mean = (
     sst_year
@@ -170,19 +174,15 @@ sb_mean = (
     .assign_coords(basin=("basin", sb.names))
 )
 
-#print(sb_mean)
-#print(sb_mean.dims)
-#print(sb_mean.coords)
-
 # plot
-sb = "Northern Europe"
+sb = "Northeastern Seaboard"
 subset = sb_mean.sel(basin=sb)
 plt.figure(figsize=(10,4))
-plt.plot(subset.year, subset, marker="o", color="red")
+plt.plot(subset.year, subset, marker="o", color="green")
 
-plt.axhline(0, color="black", linewidth=1)
-plt.title(f"Average SST Anomaly (Jun–Oct, 1860-2025) — {sb}")
+#plt.axhline(0, color="black", linewidth=1)
+plt.title(f"Average SST (Jun–Oct, 1860-2025) — {sb}")
 plt.xlabel("Year")
-plt.ylabel("SST anomaly (°C)")
-plt.savefig(f"images/data_viz/SST_avg_anom_subbasin_{sb}.png")
+plt.ylabel("SST (°C)")
+plt.savefig(f"images/data_viz/SST_avg_notAnom_subbasin_{sb}.png")
 plt.show()

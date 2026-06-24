@@ -72,7 +72,7 @@ basins_NAtl = basins[basins["basin name"] == basin_name]
 # read in NAtl subbasin polygons
 sub_polygons_dict = {}
 
-with open("tc_subbasins_NAtl_coarse_v5.dat", "r") as f:
+with open("tc_subbasins_NAtl_v5.dat", "r") as f:
     for line in f:
         line = line.strip()
         if not line or line.startswith("#"):
@@ -174,6 +174,6 @@ gl.ylocator = plt.MultipleLocator(10)  # latitude every 10°
 gl.xlabel_style = {'size': 10, 'color': 'black'}
 gl.ylabel_style = {'size': 10, 'color': 'black'}
 
-plt.title(f"TC Coarse Sub-Basins: {basin_name}")
-plt.savefig("images/sub_basins/NAtlantic_sub_basins_coarse_v5.png")
+plt.title(f"TC Sub-Basins: {basin_name}")
+plt.savefig("images/sub_basins/NAtlantic_sub_basins_v6.png")
 plt.show()

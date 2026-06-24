@@ -23,8 +23,8 @@ df = pd.read_parquet(ClassifiedData)
 #dftc_node=df[df.Track_Info=='Track_TC']
 #dftc_node = df[((df.Adjusted_Label=='TC') | (df.Adjusted_Label=='TD') | (df.Adjusted_Label=='SS(STLC)')) & ~(df['Track_Info'].str.contains('QS', case=False, na=False))]
 
-dftc_node = df[(df.Tropical_Flag==1) & ((df.Adjusted_Label=='TC') | (df.Adjusted_Label=='TD')) & ~(df['Track_Info'].str.contains('QS', case=False, na=False))]
-#dftc_node = df[(df.Tropical_Flag==1) & (df.Adjusted_Label=='TC') & ~(df['Track_Info'].str.contains('QS', case=False, na=False))]
+#dftc_node = df[(df.Tropical_Flag==1) & ((df.Adjusted_Label=='TC') | (df.Adjusted_Label=='TD')) & ~(df['Track_Info'].str.contains('QS', case=False, na=False))]
+dftc_node = df[(df.Tropical_Flag==1) & (df.Adjusted_Label=='TC') & ~(df['Track_Info'].str.contains('QS', case=False, na=False))]
 
 #print(dftc_node['Adjusted_Label'].unique())
 
@@ -100,7 +100,7 @@ basins = basins[~basins.geometry.is_empty]
 # read in tc_subbasins_NAtl file
 sub_polygons_dict = {}
 
-with open("tc_subbasins_NAtl_v5.dat", "r") as f:
+with open("tc_subbasins_NAtl_coarse_v5.dat", "r") as f:
     for line in f:
         line = line.strip()
         if not line or line.startswith("#"):
@@ -248,4 +248,4 @@ print(tc_track.head())
 #print(tc_track.shape)
 
 # save table
-tc_track.to_csv("datasets/SyCLoPS/tc&td_track_subbasin_table_withYear.csv", index = False)
+tc_track.to_csv("datasets/SyCLoPS/tc_track_subbasin_coarse_table_withYear.csv", index = False)
