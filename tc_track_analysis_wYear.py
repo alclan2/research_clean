@@ -10,35 +10,37 @@ import xarray as xr
 import regionmask
 import numpy as np
 
-## read in subbasin table with starting and ending nodes
-#ds = pd.read_csv(r"datasets/SyCLoPS/tc&td_track_subbasin_table_withYear.csv")
+# read in subbasin table with starting and ending nodes
+ds = pd.read_csv(r"datasets/SyCLoPS/tc&td_track_subbasin_table_withYear.csv")
 #print(ds.head())
 
-## pivot to sub basin by year for TC count
-#tc = ds.groupby(['YEAR_end', 'sub_basin_end']).size().unstack(fill_value=0)
+# pivot to sub basin by year for TC count
+tc = ds.groupby(['YEAR_start', 'sub_basin_start']).size().unstack(fill_value=0)
+
+#print(tc.head())
 
 ## create a total column
 #tc['Total'] = tc.sum(axis=1)
 
-#print(tc.columns)
+# #print(tc.columns)
 
-## select sub basin
-#sb = 'Total'
+# # select sub basin
+# sb = 'Deep Tropics'
 
-## scatter plot
-#ax = tc[sb].plot(
+# # scatter plot
+# ax = tc[sb].plot(
 #    kind='line',
 #    marker='o',
 #    figsize=(10, 6)
-#)
+# )
 
-#ax.set_xlabel("Year")
-#ax.set_ylabel("Count of TC/TD Dissipation Nodes")
-#ax.set_title(f"Number of TC/TD Dissipation Nodes per Year in North Atlantic ({sb})")
-#ax.yaxis.set_major_locator(MaxNLocator(integer=True))
+# ax.set_xlabel("Year")
+# ax.set_ylabel("Count of TC/TD Origin Nodes")
+# ax.set_title(f"Number of TC/TD Origin Nodes per Year in North Atlantic ({sb})")
+# ax.yaxis.set_major_locator(MaxNLocator(integer=True))
 
-#plt.savefig(f"images/data_viz/TC+TD_track_dissPerYr_{sb}.png")
-#plt.show()
+# #plt.savefig(f"images/data_viz/TC+TD_track_dissPerYr_{sb}.png")
+# plt.show()
 
 ####################################################################################
 
@@ -77,7 +79,7 @@ import numpy as np
 
 ############################################################################################
 
-# SST overlay
+# # SST overlay
 
 
 
@@ -141,8 +143,10 @@ sub_basins["geometry"] = sub_basins["geometry"].apply(shift_lon)
 
 
 
+
+
 # load COBE data set
-ds = xr.open_dataset("datasets/COBE2 SST/post-processing/SST_annual_mean_notAnomaly_jun_oct.nc")
+ds = xr.open_dataset("datasets/COBE2 SST/post-processing/SST_mon_mean_anom_full_dataset_clim_jun_oct.nc")
 
 #print(ds)
 
@@ -156,15 +160,15 @@ sb = regionmask.Regions(
 mask = sb.mask(ds.sst)
 
 # calc sub basin means
-#sst_year = (
-#    ds.sst
-#    .where(ds.time.dt.month.isin([6,7,8,9,10]), drop=True)
-#    .groupby("time.year")
-#    .mean("time")
-#)
+sst_year = (
+    ds.sst
+    .where(ds.time.dt.month.isin([6,7,8,9,10]), drop=True)
+    .groupby("time.year")
+    .mean("time")
+)
 
-# use this line if using the annual mean dataset (not anomaly datasets)
-sst_year = ds.sst
+## use this line if using the annual mean dataset (not anomaly datasets)
+#sst_year = ds.sst
 
 sb_mean = (
     sst_year
@@ -174,15 +178,22 @@ sb_mean = (
     .assign_coords(basin=("basin", sb.names))
 )
 
-# plot
-sb = "Northeastern Seaboard"
-subset = sb_mean.sel(basin=sb)
-plt.figure(figsize=(10,4))
-plt.plot(subset.year, subset, marker="o", color="green")
+print(sb_mean.head())
 
-#plt.axhline(0, color="black", linewidth=1)
-plt.title(f"Average SST (Jun–Oct, 1860-2025) — {sb}")
-plt.xlabel("Year")
-plt.ylabel("SST (°C)")
-plt.savefig(f"images/data_viz/SST_avg_notAnom_subbasin_{sb}.png")
-plt.show()
+# save SST sub basin means to a netcdf
+sb_mean.to_netcdf(r"datasets/COBE2 SST/post-processing/SST_mon_mean_anom_full_dataset_clim_jun_oct_wSubbasin.nc")
+
+
+
+# # plot
+# sb = "Northeastern Seaboard"
+# subset = sb_mean.sel(basin=sb)
+# plt.figure(figsize=(10,4))
+# plt.plot(subset.year, subset, marker="o", color="green")
+
+# plt.axhline(0, color="black", linewidth=1)
+# plt.title(f"Average SST (Jun–Oct, 1860-2025) — {sb}")
+# plt.xlabel("Year")
+# plt.ylabel("SST (°C)")
+# #plt.savefig(f"images/data_viz/SST_avg_notAnom_subbasin_{sb}.png")
+# #plt.show()

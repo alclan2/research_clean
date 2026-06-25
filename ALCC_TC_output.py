@@ -11,4 +11,5 @@ import tarfile
 
 # read in ALCC TC output tar file
 with tarfile.open("datasets/ALCC/ALCC_TC_output.tar", "r") as tar:
-    print(tar.getnames())
+    tar.extractall(path="datasets/ALCC/post_processing")
+

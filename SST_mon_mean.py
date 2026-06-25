@@ -155,21 +155,21 @@ sst_filt = (
     .sel(time=slice(None, "2025-12-31"))
 )
 
-# calculate the mean SST (not for anomaly calc)
-annual_mean = sst_filt.groupby("time.year").mean("time") 
+## calculate the mean SST (not for anomaly calc)
+#annual_mean = sst_filt.groupby("time.year").mean("time") 
 
-## calculate the climatological mean
-#monthly_clim = sst_filt.groupby("time.month").mean("time")
+# calculate the climatological mean
+monthly_clim = sst_filt.groupby("time.month").mean("time")
 
-## calculate the sst anomaly
-#sst_anom = sst_filt.groupby("time.month") - monthly_clim
+# calculate the sst anomaly
+sst_anom = sst_filt.groupby("time.month") - monthly_clim
 
-print(annual_mean)
+#print(sst_anom)
 
 # save filtered datasets
-annual_mean.to_netcdf("datasets/COBE2 SST/post-processing/SST_annual_mean_notAnomaly_jun_oct.nc")
+#annual_mean.to_netcdf("datasets/COBE2 SST/post-processing/SST_annual_mean_notAnomaly_jun_oct.nc")
 
-#print(sst_anom.head())
+print(sst_anom.head())
 
 
 #####################################################################################
