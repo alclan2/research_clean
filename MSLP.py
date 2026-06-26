@@ -358,4 +358,5 @@ ax.coastlines()
 
 plt.colorbar(mesh, label='Mean MSLP Anomaly (Pa)')
 plt.title('Mean MSLP Anomaly (4deg) in North Atlantic')
+plt.savefig('images/data_viz/tc_mslp_anom_NAtl.png')
 plt.show()
