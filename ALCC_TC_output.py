@@ -60,7 +60,7 @@ ds_pp.columns = ds_pp.columns.str.strip()
 ds_pp['mode'] = 'pp'
 
 # select mode to easily toggle between datasets
-mode = 'pp'
+mode = 'pn'
 
 # create a dictionary for the mode datasets
 ds_dict = {
@@ -265,7 +265,7 @@ piv['Total'] = piv.sum(axis=1)
 #print(piv)
 
 # select sub basin
-sb = 'Total'
+sb = 'Western Africa'
 
 # scatter plot
 ax = piv[sb].plot(
@@ -274,10 +274,10 @@ ax = piv[sb].plot(
      figsize=(10, 6)
 )
 
-ax.set_xlabel("Year")
-ax.set_ylabel("Count of TC Origin Nodes")
-ax.set_title(f"Number of TC Origin Nodes (mode {mode}) per Year in North Atlantic ({sb})")
+#ax.set_xlabel("Year")
+#ax.set_ylabel("Count of TC Origin Nodes")
+#ax.set_title(f"Number of TC Origin Nodes (mode {mode}) per Year in North Atlantic ({sb})")
 ax.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
 
-plt.savefig(f"images/data_viz/alcc/tc_origin_nodes_{mode}_{sb}.png")
+plt.savefig(f"images/data_viz/alcc/tc_origin_nodes_{mode}_{sb}_v2.png")
 plt.show()
