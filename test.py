@@ -68,5 +68,5 @@ plt.subplots_adjust(left=0.03, right=1, top=0.90, bottom=0, wspace=0, hspace=0)
 fig.suptitle("TC Origin Nodes in North Atlantic (Western Africa)", fontsize=14)
 
 #plt.tight_layout()
-plt.savefig(r"images/data_viz/alcc/tc_origin_nodes_grid_Western Africa.png")
+#plt.savefig(r"images/data_viz/alcc/tc_origin_nodes_grid_Western Africa.png")
 plt.show()

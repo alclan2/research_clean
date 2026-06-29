@@ -248,4 +248,4 @@ print(tc_track.head())
 #print(tc_track.shape)
 
 # save table
-tc_track.to_csv("datasets/SyCLoPS/tc_track_subbasin_coarse_table_withYear.csv", index = False)
+#tc_track.to_csv("datasets/SyCLoPS/tc_track_subbasin_coarse_table_withYear.csv", index = False)

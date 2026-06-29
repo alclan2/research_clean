@@ -127,7 +127,7 @@ pivot = dpshear_grid_means.pivot(index="lat", columns="lon", values="DEEPSHEAR")
 # read in tc_subbasins_NAtl file for overlay
 sub_polygons_dict = {}
 
-with open("tc_subbasins_NAtl_coarse_v5.dat", "r") as f:
+with open("tc_subbasins_NAtl_coarse_v6.dat", "r") as f:
     for line in f:
         line = line.strip()
         if not line or line.startswith("#"):
@@ -224,7 +224,7 @@ mesh = ax.pcolormesh(
 
 # add sub-basin labels
 for idx, row in sub_basins.iterrows():
-    point = row.geometry.representative_point()
+    point = row.geometry.centroid
     name = row["sub_basin_name"]
 
     # wrap text (adjust width as needed)
@@ -261,5 +261,5 @@ ax.set_ylabel('Latitude')
 plt.title("Average Wind Shear Between 200-850hPa in N Atlantic (1940-2024)")
 
 # save plot
-plt.savefig(r"images/TC_density/TC_DEEPSHEAR_NAtl_w_subbasin_coarse_overlay.png")
+plt.savefig(r"images/TC_density/TC_DEEPSHEAR_NAtl_w_subbasin_coarse_overlay_v2.png")
 plt.show()

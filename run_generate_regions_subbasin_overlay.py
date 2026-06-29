@@ -15,7 +15,7 @@ import matplotlib.patheffects as pe
 
 # select dataset for clustering
 fpaths = [
-    r"datasets/COBE2 SST/post-processing/SST_mon_mean_anom_moving_window_sep_oct_lateszn.nc"
+    r"datasets/COBE2 SST/post-processing/SST_mon_mean_anom_moving_window_aug.nc"
 ]
 
 # call clustering function
@@ -24,7 +24,7 @@ da_region, reconstructed = generate_regions(fpaths, nRegions = 10, nIter = 5)
 # read in NAtl subbasin polygons
 sub_polygons_dict = {}
 
-with open("tc_subbasins_NAtl_v4.dat", "r") as f:
+with open("tc_subbasins_NAtl_coarse_v6.dat", "r") as f:
     for line in f:
         line = line.strip()
         if not line or line.startswith("#"):
@@ -146,23 +146,25 @@ for idx, row in sub_basins.iterrows():
     if geom.geom_type == "MultiPolygon":
         geom = max(geom.geoms, key=lambda p: p.area)
 
-    pt = geom.representative_point()
+    pt = geom.centroid
 
     x = max(min(pt.x, maxx), minx)
     y = max(min(pt.y, maxy), miny)
 
     # center the Arctic label since it's getting cut off the plot
     if name == "Arctic":
-        padding = (maxy - miny) * 0.03
-        y = maxy - padding
-        x = (minx + maxx) / 2
+        y -= 5
+
+    # Northern Europe label down a bit
+    elif name == "Northern Europe":
+        y -= 7
     
     ax.text(
         x,
         y,
         name_wrapped,
         horizontalalignment='center',
-        fontsize=7,
+        fontsize=8,
         fontweight='bold',
         color='black',
         transform=ccrs.PlateCarree(),
@@ -172,7 +174,7 @@ for idx, row in sub_basins.iterrows():
     )
 
 # format and save
-plt.title("SST Monthly Mean Anomaly in North Atlantic Late Season (Sep-Oct, 1860-2015) (10 regions, 1deg)")
+plt.title("SST Monthly Mean Anomaly in North Atlantic Peak Season (Aug, 1860-2015) (10 regions, 1deg)")
 plt.tight_layout()
-plt.savefig("images/reg_gen_w_subbasin/detailed subbasins/SST/SST_mon_mean_anom_moving_window_1deg_lateszn_10reg_with_subbasins_detailed_v5.png")
+#plt.savefig("images/reg_gen_w_subbasin/coarse/SST/SST_mon_mean_anom_moving_window_1deg_peakszn_10reg_with_subbasins_coarse_v2.png")
 plt.show()

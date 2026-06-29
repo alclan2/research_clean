@@ -16,7 +16,9 @@ ClassifiedData = r"datasets/SyCLoPS/SyCLoPS_classified_ERA5_1940_2024.parquet"
 dfc = pd.read_parquet(ClassifiedData)
 
 # select TC and TD LPS nodes and filter QS out of Track_Info
-dfc_sub = dfc[((dfc.Short_Label=='TC') | (dfc.Short_Label=='TD')) & ~(dfc['Track_Info'].str.contains('QS', case=False, na=False))]
+#dfc_sub = dfc[((dfc.Short_Label=='TC') | (dfc.Short_Label=='TD')) & ~(dfc['Track_Info'].str.contains('QS', case=False, na=False))]
+dfc_sub = dfc[(dfc.Tropical_Flag==1) & ((dfc.Adjusted_Label=='TC') | (dfc.Adjusted_Label=='TD')) & ~(dfc['Track_Info'].str.contains('QS', case=False, na=False))]
+#dfc_sub = dfc[(dfc.Tropical_Flag==1) & (dfc.Adjusted_Label=='TC') & ~(dfc['Track_Info'].str.contains('QS', case=False, na=False))]
 
 # read in tc basins file and filter the N Atlantic points only
 polygons_dict = {}
@@ -119,7 +121,7 @@ ax.set_extent([lon_min, lon_max, lat_min, lat_max], crs = ccrs.PlateCarree())
 # read in NAtl subbasin polygons
 sub_polygons_dict = {}
 
-with open("tc_subbasins_NAtl_coarse_v3.dat", "r") as f:
+with open("tc_subbasins_NAtl_coarse_v6.dat", "r") as f:
     for line in f:
         line = line.strip()
         if not line or line.startswith("#"):
@@ -201,45 +203,38 @@ sub_basins.plot(ax=ax,
     zorder=3
 )
 
-# Add basin labels
+# add sub-basin labels
 for idx, row in sub_basins.iterrows():
-    geom = row.geometry
+    point = row.geometry.centroid
     name = row["sub_basin_name"]
 
     # wrap text (adjust width as needed)
     name_wrapped = "\n".join(textwrap.wrap(name, width=10, break_long_words=False, break_on_hyphens=False))
     
-    # For MultiPolygon, use the largest polygon
-    if geom.geom_type == "MultiPolygon":
-        largest_poly = max(geom.geoms, key=lambda p: p.area)
-        centroid = largest_poly.centroid
-    if geom.geom_type == "MultiPolygon":
-        geom = max(geom.geoms, key=lambda p: p.area)
-
-    pt = geom.centroid
-
-    x = max(min(pt.x, lon_max), lon_min)
-    y = max(min(pt.y, lat_max), lat_min)
-
-    # center the Arctic label since it's getting cut off the plot
+    # move Arctic label downward
     if name == "Arctic":
-        padding = (lat_max - lat_min) * 0.03
-        y = lat_max - padding
-        x = (lon_min + lon_max) / 2
-    
-    ax.text(
-        x,
-        y,
+        point = Point(point.x, point.y - 15)
+
+    # Northern Europe label down a bit
+    elif name == "Northern Europe":
+        point = Point(point.x, point.y - 5)
+
+    txt = ax.text(
+        point.x,
+        point.y,
         name_wrapped,
-        horizontalalignment='center',
-        fontsize=7,
-        fontweight='bold',
-        color='black',
         transform=ccrs.PlateCarree(),
-        path_effects=[
-            pe.withStroke(linewidth=2, foreground="white")
-        ]
+        fontsize=7,
+        weight='bold',
+        ha='center',
+        va='center',
+        color='black',
+        zorder=10
     )
+
+    txt.set_path_effects([
+        pe.withStroke(linewidth=3, foreground="white")
+    ])
 
 ax.tick_params(
     bottom=True, top=False,
