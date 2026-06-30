@@ -148,16 +148,16 @@ region = basins[basins["basin name"] == "N Atlantic"]
 region_subbasins = sub_basins[sub_basins["sub_basin_name"].isin(["Gulf (A)", "Gulf (B)", "Caribbean", "Northeastern Seaboard", "Southeastern Seaboard", "Deep Tropics", "Eastern Tropics", "Mid-latitudinal Atlantic", "Subtropical Atlantic", "Central Atlantic", "Arctic"])]
 
 # keep full dataset for anom calc
-#sst_full = (
-#    sst
-#    .rio.clip(region.geometry, region.crs, drop=True)
-#    .rio.clip(region_subbasins.geometry, region_subbasins.crs, drop=True)
-#    .sel(time=slice(None, "2025-12-31"))
-#)
+sst_full = (
+   sst
+   .rio.clip(region.geometry, region.crs, drop=True)
+   .rio.clip(region_subbasins.geometry, region_subbasins.crs, drop=True)
+   .sel(time=slice(None, "2025-12-31"))
+)
 
 # for moving mean, remove last 10 years (2016-2025) of data since we don't have enough future data to cover the long term mean calc
-#start = str(int(sst_full.time.dt.year.min()) + 10)
-#end   = str(int(sst_full.time.dt.year.max()) - 10)
+start = str(int(sst_full.time.dt.year.min()) + 10)
+end   = str(int(sst_full.time.dt.year.max()) - 10)
 
 #sst_filt = sst_full.sel(time=slice(start, end))
 
@@ -181,88 +181,88 @@ region_subbasins = sub_basins[sub_basins["sub_basin_name"].isin(["Gulf (A)", "Gu
 
 
 ######################################################################################
-# plot anom for each month in central basin region (NOT USING MOVING WINDOW HERE - USING BASELINE 1951-1980)
+# # plot anom for each month in central basin region (NOT USING MOVING WINDOW HERE - USING BASELINE 1951-1980)
 
-# anom calc for 1991-2020
-baseline = sst.sel(time=slice("1951","1980"))
-clim = baseline.groupby("time.month").mean("time")
-anom = sst.groupby("time.month") - clim
+# # anom calc for 1991-2020
+# baseline = sst.sel(time=slice("1951","1980"))
+# clim = baseline.groupby("time.month").mean("time")
+# anom = sst.groupby("time.month") - clim
 
-# select one month and avg across time
-anom_2 = anom.where(anom.time.dt.month == 6, drop=True) 
-anom_3 = anom_2.mean(dim="time")
+# # select one month and avg across time
+# anom_2 = anom.where(anom.time.dt.month == 6, drop=True) 
+# anom_3 = anom_2.mean(dim="time")
 
 
-# plot the sst's for hurricane season
-fig = plt.figure(figsize=(8,6))
-ax = plt.axes(projection=ccrs.PlateCarree()) 
+# # plot the sst's for hurricane season
+# fig = plt.figure(figsize=(8,6))
+# ax = plt.axes(projection=ccrs.PlateCarree()) 
 
-# Plot sub-basins first
-sub_basins.plot(
-    ax=ax,
-    facecolor='none',
-    edgecolor='red',
-    path_effects=[pe.withStroke(linewidth=3, foreground='white')],
-    linewidth=1,
-    transform=ccrs.PlateCarree(),
-    zorder=4
-)
+# # Plot sub-basins first
+# sub_basins.plot(
+#     ax=ax,
+#     facecolor='none',
+#     edgecolor='red',
+#     path_effects=[pe.withStroke(linewidth=3, foreground='white')],
+#     linewidth=1,
+#     transform=ccrs.PlateCarree(),
+#     zorder=4
+# )
 
-anom_3.plot(
-    ax=ax,
-    transform=ccrs.PlateCarree(),
-    cmap="coolwarm",
-    cbar_kwargs={"label": "SST Anomaly (°C)"}
-)
+# anom_3.plot(
+#     ax=ax,
+#     transform=ccrs.PlateCarree(),
+#     cmap="coolwarm",
+#     cbar_kwargs={"label": "SST Anomaly (°C)"}
+# )
 
-ax.coastlines()
-ax.set_extent([-90, 0, 10, 50],crs=ccrs.PlateCarree())
+# ax.coastlines()
+# ax.set_extent([-90, 0, 10, 50],crs=ccrs.PlateCarree())
 
-# add sub-basin labels
-for idx, row in sub_basins.iterrows():
-    point = row.geometry.centroid
-    name = row["sub_basin_name"]
+# # add sub-basin labels
+# for idx, row in sub_basins.iterrows():
+#     point = row.geometry.centroid
+#     name = row["sub_basin_name"]
 
-    # wrap text (adjust width as needed)
-    name_wrapped = "\n".join(textwrap.wrap(name, width=10, break_long_words=False, break_on_hyphens=False))
+#     # wrap text (adjust width as needed)
+#     name_wrapped = "\n".join(textwrap.wrap(name, width=10, break_long_words=False, break_on_hyphens=False))
     
-    if (-90 <= point.x <= 0) and (10 <= point.y <= 50):
-        txt = ax.text(
-            point.x, point.y,
-            name_wrapped,
-            transform=ccrs.PlateCarree(),
-            fontsize=7,
-            weight='bold',
-            ha='center',
-            va='center',
-            color='black',
-            zorder=4
-        )
+#     if (-90 <= point.x <= 0) and (10 <= point.y <= 50):
+#         txt = ax.text(
+#             point.x, point.y,
+#             name_wrapped,
+#             transform=ccrs.PlateCarree(),
+#             fontsize=7,
+#             weight='bold',
+#             ha='center',
+#             va='center',
+#             color='black',
+#             zorder=4
+#         )
         
-        txt.set_path_effects([
-            pe.withStroke(linewidth=3, foreground="white")
-        ])
+#         txt.set_path_effects([
+#             pe.withStroke(linewidth=3, foreground="white")
+#         ])
 
-ax.set_xlabel('Longitude')
-ax.set_ylabel('Latitude')
+# ax.set_xlabel('Longitude')
+# ax.set_ylabel('Latitude')
 
-# Add gridlines with labels
-gl = ax.gridlines(
-    draw_labels=True,
-    linewidth=0.1,
-    color='gray',
-    linestyle='--'
-)
+# # Add gridlines with labels
+# gl = ax.gridlines(
+#     draw_labels=True,
+#     linewidth=0.1,
+#     color='gray',
+#     linestyle='--'
+# )
 
-gl.xlocator = plt.MultipleLocator(10)  # longitude every 10°
-gl.ylocator = plt.MultipleLocator(10)  # latitude every 10°
-gl.xlabel_style = {'size': 10, 'color': 'black'}
-gl.ylabel_style = {'size': 10, 'color': 'black'}
+# gl.xlocator = plt.MultipleLocator(10)  # longitude every 10°
+# gl.ylocator = plt.MultipleLocator(10)  # latitude every 10°
+# gl.xlabel_style = {'size': 10, 'color': 'black'}
+# gl.ylabel_style = {'size': 10, 'color': 'black'}
 
-ax.set_title("SST Anomaly June (1951-1980 Baseline)")
+# ax.set_title("SST Anomaly June (1951-1980 Baseline)")
 
-plt.savefig("images/SST_CtrlAtl_anom_1951-1980_jun_v2.png")
-plt.show()
+# plt.savefig("images/SST_CtrlAtl_anom_1951-1980_jun_v2.png")
+# plt.show()
 
 
 

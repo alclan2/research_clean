@@ -151,10 +151,10 @@ filtered = gpd.sjoin(
 )
 
 # set axis bounds for the region (match same dimensions as reg gen plots)
-lon_min = df['LON_180'].min()
-lon_max = df['LON_180'].max()
-lat_min = df['LAT'].min()
-lat_max = df['LAT'].max()
+lon_min = filtered['LON_180'].min()
+lon_max = filtered['LON_180'].max()
+lat_min = filtered['LAT'].min()
+lat_max = filtered['LAT'].max()
 
 # set up 4x4 degree spacing
 lon_edges = np.arange(lon_min, lon_max + 4, 4)
@@ -172,6 +172,8 @@ grid_mean_ws = (
 )
 
 print(grid_mean_ws.head())
+# print(grid_mean_ws['mean_WS'].max())
+# print(grid_mean_ws['mean_WS'].min())
 
 #######################################################################################################
 
@@ -200,74 +202,78 @@ sub_basins.plot(
     zorder=4
 )
 
-# make the TC density plot
-# plt.hist2d(tc_dissipate_filtered['LON'], tc_dissipate_filtered['LAT'], bins = [lon_edges, lat_edges], range = [[lon_min, lon_max], [lat_min, lat_max]], cmap = plasma_r_zero_white, transform = ccrs.PlateCarree())
+# plot
+grid = grid_mean_ws.pivot(
+    index="lat_bin",
+    columns="lon_bin",
+    values="mean_WS"
+)
 
+lon = grid.columns.values
+lat = grid.index.values
+Lon, Lat = np.meshgrid(lon, lat)
 
+pcm = ax.pcolormesh(
+    Lon,
+    Lat,
+    grid.values,
+    cmap=plasma_r_zero_white,
+    shading="auto",
+    transform=ccrs.PlateCarree()
+)
 
-
-# # Add coastlines
-# ax.coastlines(resolution='50m', color='black', linewidth=1)
+plt.colorbar(pcm, ax=ax, label="Mean Wind Speed (m/s)")
 
 # # Set labels and title
-# ax.set_xlabel('Longitude')
-# ax.set_ylabel('Latitude')
-# ax.set_title('Dissipation Node Density of TC + TDs in the North Atlantic (1940-2024)')
+ax.set_ylabel('Latitude')
+ax.set_xlabel('Longitude')
+ax.set_title('Max Wind Speed (10m) of TC/TDs in the North Atlantic (1940-2024)')
 
-# # round to nearest 10deg
-# lon_min_10 = np.floor(lon_min / 10) * 10 
-# lon_max_10 = np.ceil(lon_max / 10) * 10   
-# lat_min_10 = np.floor(lat_min / 10) * 10
-# lat_max_10 = np.ceil(lat_max / 10) * 10
+# round to nearest 10deg
+lon_min_10 = np.floor(lon_min / 10) * 10 
+lon_max_10 = np.ceil(lon_max / 10) * 10   
+lat_min_10 = np.floor(lat_min / 10) * 10
+lat_max_10 = np.ceil(lat_max / 10) * 10
 
+# add sub-basin labels
+for idx, row in sub_basins.iterrows():
+    point = row.geometry.centroid
+    name = row["sub_basin_name"]
 
-# # CHECK
-# #print(lon_min, lon_max)
-# #print(type(lon_min_10), type(lon_max_10))
-
-
-# # add sub-basin labels
-# for idx, row in sub_basins.iterrows():
-#     point = row.geometry.centroid
-#     name = row["sub_basin_name"]
-
-#     # wrap text (adjust width as needed)
-#     name_wrapped = "\n".join(textwrap.wrap(name, width=10, break_long_words=False, break_on_hyphens=False))
+    # wrap text (adjust width as needed)
+    name_wrapped = "\n".join(textwrap.wrap(name, width=10, break_long_words=False, break_on_hyphens=False))
     
-#     # move Arctic label downward
-#     if name == "Arctic":
-#         point = Point(point.x, point.y - 15)
-#         #continue
+    # move Arctic label downward
+    if name == "Arctic":
+        point = Point(point.x, point.y - 15)
+        #continue
 
-#     # Northern Europe label down a bit
-#     elif name == "Northern Europe":
-#         point = Point(point.x, point.y - 5)
-#         #continue
+    # Northern Europe label down a bit
+    elif name == "Northern Europe":
+        point = Point(point.x, point.y - 5)
+        #continue
 
-#     txt = ax.text(
-#         point.x,
-#         point.y,
-#         name_wrapped,
-#         transform=ccrs.PlateCarree(),
-#         fontsize=7,
-#         weight='bold',
-#         ha='center',
-#         va='center',
-#         color='black',
-#         zorder=10
-#     )
+    txt = ax.text(
+        point.x,
+        point.y,
+        name_wrapped,
+        transform=ccrs.PlateCarree(),
+        fontsize=7,
+        weight='bold',
+        ha='center',
+        va='center',
+        color='black',
+        zorder=10
+    )
 
-#     txt.set_path_effects([
-#         pe.withStroke(linewidth=3, foreground="white")
-#     ])
+    txt.set_path_effects([
+        pe.withStroke(linewidth=3, foreground="white")
+    ])
 
-        
+# Set tick marks every 10 degrees
+ax.set_extent([lon_min_10, lon_max_10, lat_min_10, lat_max_10],crs=ccrs.PlateCarree())
+ax.set_xticks(np.arange(lon_min_10, lon_max_10, 10), crs=ccrs.PlateCarree())
+ax.set_yticks(np.arange(lat_min_10, lat_max_10, 10), crs=ccrs.PlateCarree())
 
-# # Set tick marks every 10 degrees
-# ax.set_xticks(np.arange(lon_min_10, lon_max_10, 10), crs=ccrs.PlateCarree())
-# ax.set_yticks(np.arange(lat_min_10, lat_max_10, 10), crs=ccrs.PlateCarree())
-
-# ax.set_extent([lon_min_10, lon_max_10, lat_min_10, lat_max_10],crs=ccrs.PlateCarree())
-
-#plt.savefig(r"images/data_viz/TC_diss/TC+TD/TC+TD_diss_density_Total_coarse.png")
+#plt.savefig(r"images/data_viz/WS/max_wind_speed_syclops_TC+TD_coarse.png")
 #plt.show()
