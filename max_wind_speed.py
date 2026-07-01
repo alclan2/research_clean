@@ -177,103 +177,103 @@ print(grid_mean_ws.head())
 
 #######################################################################################################
 
-# plot
+# # plot
 
-# set up map projection
-fig, ax = plt.subplots(figsize = (10,6), subplot_kw = {"projection": ccrs.PlateCarree()})
+# # set up map projection
+# fig, ax = plt.subplots(figsize = (10,6), subplot_kw = {"projection": ccrs.PlateCarree()})
 
-#add coastlines & set axis bounds
-ax.coastlines()
+# #add coastlines & set axis bounds
+# ax.coastlines()
 
-# custom colormap so 0 displays as white on the map
-base_cmap = plt.cm.plasma_r
-cmap_colors = base_cmap(np.linspace(0, 1, 256))
-cmap_colors[0] = [1.0, 1.0, 1.0, 1.0]  # white (RGBA)
-plasma_r_zero_white = colors.ListedColormap(cmap_colors)
+# # custom colormap so 0 displays as white on the map
+# base_cmap = plt.cm.plasma_r
+# cmap_colors = base_cmap(np.linspace(0, 1, 256))
+# cmap_colors[0] = [1.0, 1.0, 1.0, 1.0]  # white (RGBA)
+# plasma_r_zero_white = colors.ListedColormap(cmap_colors)
 
-# Plot sub-basins first
-sub_basins.plot(
-    ax=ax,
-    facecolor='none',
-    edgecolor='red',
-    path_effects=[pe.withStroke(linewidth=3, foreground='white')],
-    linewidth=1,
-    transform=ccrs.PlateCarree(),
-    zorder=4
-)
+# # Plot sub-basins first
+# sub_basins.plot(
+#     ax=ax,
+#     facecolor='none',
+#     edgecolor='red',
+#     path_effects=[pe.withStroke(linewidth=3, foreground='white')],
+#     linewidth=1,
+#     transform=ccrs.PlateCarree(),
+#     zorder=4
+# )
 
-# plot
-grid = grid_mean_ws.pivot(
-    index="lat_bin",
-    columns="lon_bin",
-    values="mean_WS"
-)
+# # plot
+# grid = grid_mean_ws.pivot(
+#     index="lat_bin",
+#     columns="lon_bin",
+#     values="mean_WS"
+# )
 
-lon = grid.columns.values
-lat = grid.index.values
-Lon, Lat = np.meshgrid(lon, lat)
+# lon = grid.columns.values
+# lat = grid.index.values
+# Lon, Lat = np.meshgrid(lon, lat)
 
-pcm = ax.pcolormesh(
-    Lon,
-    Lat,
-    grid.values,
-    cmap=plasma_r_zero_white,
-    shading="auto",
-    transform=ccrs.PlateCarree()
-)
+# pcm = ax.pcolormesh(
+#     Lon,
+#     Lat,
+#     grid.values,
+#     cmap=plasma_r_zero_white,
+#     shading="auto",
+#     transform=ccrs.PlateCarree()
+# )
 
-plt.colorbar(pcm, ax=ax, label="Mean Wind Speed (m/s)")
+# plt.colorbar(pcm, ax=ax, label="Mean Wind Speed (m/s)")
 
-# # Set labels and title
-ax.set_ylabel('Latitude')
-ax.set_xlabel('Longitude')
-ax.set_title('Max Wind Speed (10m) of TC/TDs in the North Atlantic (1940-2024)')
+# # # Set labels and title
+# ax.set_ylabel('Latitude')
+# ax.set_xlabel('Longitude')
+# ax.set_title('Max Wind Speed (10m) of TC/TDs in the North Atlantic (1940-2024)')
 
-# round to nearest 10deg
-lon_min_10 = np.floor(lon_min / 10) * 10 
-lon_max_10 = np.ceil(lon_max / 10) * 10   
-lat_min_10 = np.floor(lat_min / 10) * 10
-lat_max_10 = np.ceil(lat_max / 10) * 10
+# # round to nearest 10deg
+# lon_min_10 = np.floor(lon_min / 10) * 10 
+# lon_max_10 = np.ceil(lon_max / 10) * 10   
+# lat_min_10 = np.floor(lat_min / 10) * 10
+# lat_max_10 = np.ceil(lat_max / 10) * 10
 
-# add sub-basin labels
-for idx, row in sub_basins.iterrows():
-    point = row.geometry.centroid
-    name = row["sub_basin_name"]
+# # add sub-basin labels
+# for idx, row in sub_basins.iterrows():
+#     point = row.geometry.centroid
+#     name = row["sub_basin_name"]
 
-    # wrap text (adjust width as needed)
-    name_wrapped = "\n".join(textwrap.wrap(name, width=10, break_long_words=False, break_on_hyphens=False))
+#     # wrap text (adjust width as needed)
+#     name_wrapped = "\n".join(textwrap.wrap(name, width=10, break_long_words=False, break_on_hyphens=False))
     
-    # move Arctic label downward
-    if name == "Arctic":
-        point = Point(point.x, point.y - 15)
-        #continue
+#     # move Arctic label downward
+#     if name == "Arctic":
+#         point = Point(point.x, point.y - 15)
+#         #continue
 
-    # Northern Europe label down a bit
-    elif name == "Northern Europe":
-        point = Point(point.x, point.y - 5)
-        #continue
+#     # Northern Europe label down a bit
+#     elif name == "Northern Europe":
+#         point = Point(point.x, point.y - 5)
+#         #continue
 
-    txt = ax.text(
-        point.x,
-        point.y,
-        name_wrapped,
-        transform=ccrs.PlateCarree(),
-        fontsize=7,
-        weight='bold',
-        ha='center',
-        va='center',
-        color='black',
-        zorder=10
-    )
+#     txt = ax.text(
+#         point.x,
+#         point.y,
+#         name_wrapped,
+#         transform=ccrs.PlateCarree(),
+#         fontsize=7,
+#         weight='bold',
+#         ha='center',
+#         va='center',
+#         color='black',
+#         zorder=10
+#     )
 
-    txt.set_path_effects([
-        pe.withStroke(linewidth=3, foreground="white")
-    ])
+#     txt.set_path_effects([
+#         pe.withStroke(linewidth=3, foreground="white")
+#     ])
 
-# Set tick marks every 10 degrees
-ax.set_extent([lon_min_10, lon_max_10, lat_min_10, lat_max_10],crs=ccrs.PlateCarree())
-ax.set_xticks(np.arange(lon_min_10, lon_max_10, 10), crs=ccrs.PlateCarree())
-ax.set_yticks(np.arange(lat_min_10, lat_max_10, 10), crs=ccrs.PlateCarree())
+# # Set tick marks every 10 degrees
+# ax.set_extent([lon_min_10, lon_max_10, lat_min_10, lat_max_10],crs=ccrs.PlateCarree())
+# ax.set_xticks(np.arange(lon_min_10, lon_max_10, 10), crs=ccrs.PlateCarree())
+# ax.set_yticks(np.arange(lat_min_10, lat_max_10, 10), crs=ccrs.PlateCarree())
 
 #plt.savefig(r"images/data_viz/WS/max_wind_speed_syclops_TC+TD_coarse.png")
 #plt.show()

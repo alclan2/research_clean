@@ -184,177 +184,73 @@ filtered_join = gpd.sjoin(
 )
 
 # trim columns
-ws = filtered_join[['lon_bin', 'lat_bin', 'sub_basin_name', 'ISOTIME', 'WS', 'MSLP']]
+ds = filtered_join[['lon_bin', 'lat_bin', 'sub_basin_name', 'ISOTIME', 'WS', 'MSLP']]
 
 # add year column
-ws['YEAR'] = ws['ISOTIME'].dt.year
+ds['YEAR'] = ds['ISOTIME'].dt.year
 
-print(ws.head())
-
-# pivot by year to get time series of mean WS (or MSLP)
-ws_yr = ws.pivot_table(
-    index="YEAR",
-    columns="sub_basin_name",
-    values="WS",
-    aggfunc="mean"
+# calc anomaly (baseline: entire time period)
+# overall climatology per sub-basin
+clim = ds.groupby("sub_basin_name")[["WS", "MSLP"]].mean().rename(
+    columns={"WS": "clim_WS", "MSLP": "clim_MSLP"}
 )
 
-#print(ws_yr.head())
+# merge climatology back
+ds_anom = ds.merge(clim, on="sub_basin_name", how="left")
 
-#######################################################################################################
+# compute anomalies
+ds_anom["WS_anom"] = ds_anom["WS"] - ds_anom["clim_WS"]
+ds_anom["MSLP_anom"] = ds_anom["MSLP"] - ds_anom["clim_MSLP"]
 
-# # plot mean WS as a time series per sub basin
-
-# # select sub basin
-# sb = 'Northeastern Seaboard'
-
-# # scatter plot
-# ax = ws_yr[sb].plot(
-#    kind='line',
-#    marker='o',
-#    figsize=(10, 6)
-# )
-
-# ax.set_xlabel("Year")
-# ax.set_ylabel("MSLP (Pa)")
-# ax.set_title(f"Mean Sea Level Pressure for TC/TDs in North Atlantic ({sb})")
-# ax.yaxis.set_major_locator(MaxNLocator(integer=True))
-
-# plt.savefig(f"images/data_viz/MSLP/timeseries/tc_mslp_timeseries_{sb}_v2.png")
-# plt.show()
-
-#######################################################################################################
-
-# pivot to get correlation between WS and MSLP
-
-# pivot to year means
-yearly = (
-    ws
+# now aggregate yearly anomalies
+yearly_anom = (
+    ds_anom
     .groupby(["YEAR", "sub_basin_name"], as_index=False)
     .agg(
-        mean_WS=("WS", "mean"),
-        mean_MSLP=("MSLP", "mean")
+        mean_WS_anom=("WS_anom", "mean"),
+        mean_MSLP_anom=("MSLP_anom", "mean")
     )
 )
 
-#print(yearly.head())
+#print(yearly_anom)
 
 # save to csv
-#yearly.to_csv("datasets/SyCLoPS/WS_MSLP_bySubbasin_TC+TD_table.csv")
+#yearly_anom.to_csv("datasets/SyCLoPS/WS_MSLP_anom_bySubbasin_TC+TD_table.csv")
+
+#######################################################################################################
+
+# plot mean WS as a time series per sub basin
+
+# # select sub basin
+# sb = 'Mid-latitudinal Atlantic'
+
+# df_plot = yearly_anom[yearly_anom["sub_basin_name"] == sb]
+
+# plt.figure(figsize=(10, 5))
+# plt.plot(df_plot["YEAR"], df_plot["mean_MSLP_anom"], marker="o", color = "green")
+
+# plt.axhline(0, color="black", linewidth=1)
+# plt.title(f"Mean Sea Level Pressure Anomaly for TC/TDs in North Atlantic - {sb}")
+# plt.xlabel("Year")
+# plt.ylabel("MSLP Anomaly (Pa)")
+
+# plt.tight_layout()
+#plt.savefig(f"images/data_viz/MSLP/timeseries/TC+TD_MSLP_anom_timeseries_{sb}.png")
+#plt.show()
+
+#######################################################################################################
 
 # compute correl between WS and MSLP
 corrs = (
-    yearly
+    yearly_anom
     .groupby("sub_basin_name")
-    .apply(lambda x: x["mean_WS"].corr(x["mean_MSLP"]))
+    .apply(lambda x: x["mean_WS_anom"].corr(x["mean_MSLP_anom"]))
     .rename("correlation")
     .reset_index()
 )
 
+#print(yearly_anom.head())
 #print(corrs)
 
 # save to csv
-#corrs.to_csv("datasets/SyCLoPS/WS_MSLP_correl_TC+TD.csv")
-
-#######################################################################################################
-
-# # plot
-
-# # set up map projection
-# fig, ax = plt.subplots(figsize = (10,6), subplot_kw = {"projection": ccrs.PlateCarree()})
-
-# #add coastlines & set axis bounds
-# ax.coastlines()
-
-# # custom colormap so 0 displays as white on the map
-# base_cmap = plt.cm.plasma_r
-# cmap_colors = base_cmap(np.linspace(0, 1, 256))
-# cmap_colors[0] = [1.0, 1.0, 1.0, 1.0]  # white (RGBA)
-# plasma_r_zero_white = colors.ListedColormap(cmap_colors)
-
-# # Plot sub-basins first
-# sub_basins.plot(
-#     ax=ax,
-#     facecolor='none',
-#     edgecolor='red',
-#     path_effects=[pe.withStroke(linewidth=3, foreground='white')],
-#     linewidth=1,
-#     transform=ccrs.PlateCarree(),
-#     zorder=4
-# )
-
-# # plot
-# grid = grid_mean_ws.pivot(
-#     index="lat_bin",
-#     columns="lon_bin",
-#     values="mean_WS"
-# )
-
-# lon = grid.columns.values
-# lat = grid.index.values
-# Lon, Lat = np.meshgrid(lon, lat)
-
-# pcm = ax.pcolormesh(
-#     Lon,
-#     Lat,
-#     grid.values,
-#     cmap=plasma_r_zero_white,
-#     shading="auto",
-#     transform=ccrs.PlateCarree()
-# )
-
-# plt.colorbar(pcm, ax=ax, label="Mean Wind Speed (m/s)")
-
-# # # Set labels and title
-# ax.set_ylabel('Latitude')
-# ax.set_xlabel('Longitude')
-# ax.set_title('Max Wind Speed (10m) of TC/TDs in the North Atlantic (1940-2024)')
-
-# # round to nearest 10deg
-# lon_min_10 = np.floor(lon_min / 10) * 10 
-# lon_max_10 = np.ceil(lon_max / 10) * 10   
-# lat_min_10 = np.floor(lat_min / 10) * 10
-# lat_max_10 = np.ceil(lat_max / 10) * 10
-
-# # add sub-basin labels
-# for idx, row in sub_basins.iterrows():
-#     point = row.geometry.centroid
-#     name = row["sub_basin_name"]
-
-#     # wrap text (adjust width as needed)
-#     name_wrapped = "\n".join(textwrap.wrap(name, width=10, break_long_words=False, break_on_hyphens=False))
-    
-#     # move Arctic label downward
-#     if name == "Arctic":
-#         point = Point(point.x, point.y - 15)
-#         #continue
-
-#     # Northern Europe label down a bit
-#     elif name == "Northern Europe":
-#         point = Point(point.x, point.y - 5)
-#         #continue
-
-#     txt = ax.text(
-#         point.x,
-#         point.y,
-#         name_wrapped,
-#         transform=ccrs.PlateCarree(),
-#         fontsize=7,
-#         weight='bold',
-#         ha='center',
-#         va='center',
-#         color='black',
-#         zorder=10
-#     )
-
-#     txt.set_path_effects([
-#         pe.withStroke(linewidth=3, foreground="white")
-#     ])
-
-# # Set tick marks every 10 degrees
-# ax.set_extent([lon_min_10, lon_max_10, lat_min_10, lat_max_10],crs=ccrs.PlateCarree())
-# ax.set_xticks(np.arange(lon_min_10, lon_max_10, 10), crs=ccrs.PlateCarree())
-# ax.set_yticks(np.arange(lat_min_10, lat_max_10, 10), crs=ccrs.PlateCarree())
-
-#plt.savefig(r"images/data_viz/WS/max_wind_speed_syclops_TC+TD_coarse.png")
-#plt.show()
+corrs.to_csv("datasets/SyCLoPS/WS_MSLP_anom_correl_TC+TD.csv")
