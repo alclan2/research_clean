@@ -124,6 +124,7 @@ def shift_lon(geom):
 # shift lon
 sub_basins["geometry"] = sub_basins["geometry"].apply(shift_lon)
 
+##########################################################################################################
 
 # open COBE SST monthly mean file
 time_coder = xr.coders.CFDatetimeCoder(use_cftime=True)
@@ -147,12 +148,12 @@ region = basins[basins["basin name"] == "N Atlantic"]
 ## filter out Arctic and continental US sub-basins
 #region_subbasins = sub_basins[sub_basins["sub_basin_name"].isin(["Central Atlantic"])]
 
-# filter to hurricane season
+# filter to hurricane season (and filter date range to match SyCLoPS)
 sst_filt = (
     sst
-    .where(sst.time.dt.month.isin([6, 7, 8, 9, 10]), drop=True)
+    .sel(time=slice("1940-01-01", "2024-12-31"))
+    .where(lambda x: x.time.dt.month.isin([6, 7, 8, 9, 10]), drop=True)
     .rio.clip(region.geometry, region.crs, drop=True)
-    .sel(time=slice(None, "2025-12-31"))
 )
 
 ## calculate the mean SST (not for anomaly calc)
@@ -167,9 +168,9 @@ sst_anom = sst_filt.groupby("time.month") - monthly_clim
 #print(sst_anom)
 
 # save filtered datasets
-#annual_mean.to_netcdf("datasets/COBE2 SST/post-processing/SST_annual_mean_notAnomaly_jun_oct.nc")
+sst_anom.to_netcdf("datasets/COBE2 SST/post-processing/SST_mon_mean_anom_1940-2024_clim_jun_oct.nc")
 
-print(sst_anom.head())
+#print(sst_anom.head())
 
 
 #####################################################################################

@@ -17,7 +17,7 @@ import xarray as xr
 df1 = pd.read_csv("datasets/SyCLoPS/WS_MSLP_anom_bySubbasin_TC+TD_table.csv")
 
 #load SST anom yearly csv
-df2 = pd.read_csv("datasets/COBE2 SST/post-processing/sst_anom_fullDataset_bySubbasin_table.csv")
+df2 = pd.read_csv("datasets/COBE2 SST/post-processing/sst_anom_1940-2024_bySubbasin_table.csv")
 
 # trim SST dataframe to match year range for WS and MSLP
 df2 = df2[df2['year'].between(1940,2024)]
@@ -53,7 +53,7 @@ corr_table = pd.concat(all_corrs, ignore_index=True)
 #print(corr_table)
 
 # save to file
-#corr_table.to_csv("datasets/data_viz/SST_WS_MSLP_anom_correl_sb.csv")
+#corr_table.to_csv("datasets/data_viz/SST_WS_MSLP_anom_correl_sb_v2_sst1940-2024.csv")
 
 ###########################################################################################################
 
@@ -91,7 +91,7 @@ corr2 = (
 #print(corr2)
 
 # save to csv
-#corr2.to_csv("datasets/data_viz/TC+TDOriginNodes_WSanom+MSLPanom+SSTanom_correl_sb.csv")
+#corr2.to_csv("datasets/data_viz/TC+TDOriginNodes_WSanom+MSLPanom+SSTanom_correl_sb_v2_sst1940-2024.csv")
 
 ###########################################################################################################
 
@@ -140,5 +140,5 @@ axes[2].set_xlabel("Year")
 
 plt.suptitle(f"WS, MSLP, SST Anomalies in the North Atlantic - {sb}")
 plt.tight_layout()
-plt.savefig(f"images/data_viz/WSvsMSLPvsSST_anom_timeseries_{sb}.png")
-plt.show()
+# plt.savefig(f"images/data_viz/WSvsMSLPvsSST_anom_timeseries_{sb}_v2_sst1940-2024.png")
+# plt.show()

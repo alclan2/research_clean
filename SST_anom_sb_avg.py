@@ -14,17 +14,17 @@ from matplotlib.ticker import MaxNLocator
 import xarray as xr
 
 # read in anom net cdf
-ds = xr.open_dataset("datasets/COBE2 SST/post-processing/SST_mon_mean_anom_full_dataset_clim_jun_oct_wSubbasin.nc")
+ds = xr.open_dataset("datasets/COBE2 SST/post-processing/SST_mon_mean_anom_1940-2024_clim_jun_oct_wSubbasin.nc")
 
-print(ds)
+#print(ds)
 
 # convert to a dataframe
 df = ds['sst'].to_dataframe(name = 'mean_anom').reset_index()
 
-#print(df)
+print(df)
 
 # save to csv
-#df.to_csv("datasets/COBE2 SST/post-processing/sst_anom_fullDataset_bySubbasin_table.csv")
+df.to_csv("datasets/COBE2 SST/post-processing/sst_anom_1940-2024_bySubbasin_table.csv")
 
 #######################################################################################################
 

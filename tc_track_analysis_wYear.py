@@ -146,7 +146,7 @@ sub_basins["geometry"] = sub_basins["geometry"].apply(shift_lon)
 
 
 # load COBE data set
-ds = xr.open_dataset("datasets/COBE2 SST/post-processing/SST_mon_mean_anom_full_dataset_clim_jun_oct.nc")
+ds = xr.open_dataset("datasets/COBE2 SST/post-processing/SST_mon_mean_anom_1940-2024_clim_jun_oct.nc")
 
 #print(ds)
 
@@ -181,7 +181,7 @@ sb_mean = (
 print(sb_mean.head())
 
 # save SST sub basin means to a netcdf
-sb_mean.to_netcdf(r"datasets/COBE2 SST/post-processing/SST_mon_mean_anom_full_dataset_clim_jun_oct_wSubbasin.nc")
+#sb_mean.to_netcdf(r"datasets/COBE2 SST/post-processing/SST_mon_mean_anom_1940-2024_clim_jun_oct_wSubbasin.nc")
 
 
 
