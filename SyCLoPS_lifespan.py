@@ -280,31 +280,81 @@ lifespan["sub_basin_diss"] = diss_join["sub_basin_name"].values
 
 ############################################################################################################
 
-# scatter plot of lifespan vs. WS/MSLP
+# # scatter plot of lifespan vs. WS/MSLP
 
+# # filter to sub basin
+# sb = 'Mid-latitudinal Atlantic'
+
+# lifespan_sb = lifespan[lifespan["sub_basin_origin"] == sb]
+
+# #print(lifespan_sb.head())
+
+# plt.figure(figsize=(10, 5))
+
+# plt.scatter(
+#     x = lifespan_sb["WS_origin"],
+#     y = lifespan_sb["WS_diss"],
+#     color = 'purple',
+#     s=50
+# )
+
+# plt.xlabel("WS at Origin (m/s)")
+# plt.ylabel("WS at Dissipation (m/s)")
+# plt.title(f"TC Wind Speed at Origin vs. Dissipation - {sb}")
+
+# plt.xticks(rotation=45, ha="right")
+# plt.tight_layout()
+
+# plt.savefig(f"images/data_viz/WS/WS_origin_vs_diss_{sb}.png")
+
+# plt.show()
+
+############################################################################################################
+
+# scatter plot with line of best fit
 # filter to sub basin
 sb = 'Mid-latitudinal Atlantic'
 
 lifespan_sb = lifespan[lifespan["sub_basin_origin"] == sb]
 
-#print(lifespan_sb)
-
 plt.figure(figsize=(10, 5))
 
+x = lifespan_sb["WS_origin"]
+y = lifespan_sb["WS_diss"]
+
 plt.scatter(
-    x = lifespan_sb["MSLP_origin"],
-    y = lifespan_sb["lifespan_days"],
-    color = 'green',
+    x=x,
+    y=y,
+    color='purple',
     s=50
 )
 
-plt.xlabel("MSLP (Pa)")
-plt.ylabel("Lifespan (days)")
-plt.title(f"TC Lifespan vs. Origin Mean Sea Level Pressure - {sb}")
+# Line of best fit
+m, b = np.polyfit(x, y, 1)
+x_fit = np.linspace(x.min(), x.max(), 100)
+
+# add R2
+from sklearn.metrics import r2_score
+y_pred = m * x + b
+r2 = r2_score(y, y_pred)
+
+plt.plot(
+    x_fit,
+    m * x_fit + b,
+    color="black",
+    linewidth=2,
+    label=f"Best fit: y={m:.2f}x+{b:.2f}, R²={r2:.2f}"
+)
+
+plt.xlabel("WS at Origin (m/s)")
+plt.ylabel("WS at Dissipation (m/s)")
+plt.title(f"TC Wind Speed at Origin vs. Dissipation - {sb}")
+
+plt.legend()
 
 plt.xticks(rotation=45, ha="right")
 plt.tight_layout()
 
-plt.savefig(f"images/data_viz/lifespan/tc_lifespan_vs_originMSLP_{sb}.png")
+plt.savefig(f"images/data_viz/WS/WS_origin_vs_diss_wR2_{sb}.png")
 
 plt.show()
