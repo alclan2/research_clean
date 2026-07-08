@@ -15,16 +15,16 @@ import matplotlib.patheffects as pe
 
 # select dataset for clustering
 fpaths = [
-    r"datasets/COBE2 SST/post-processing/SST_mon_mean_anom_moving_window_aug.nc"
+    r"datasets/GPI/post-processing/GPI_mon_mean_anom_moving_window_1deg_sep_oct_lateszn.nc"
 ]
 
 # call clustering function
-da_region, reconstructed = generate_regions(fpaths, nRegions = 10, nIter = 5)
+da_region, reconstructed = generate_regions(fpaths, nRegions = 15, nIter = 5)
 
 # read in NAtl subbasin polygons
 sub_polygons_dict = {}
 
-with open("tc_subbasins_NAtl_coarse_v6.dat", "r") as f:
+with open("tc_subbasins_NAtl_v5.dat", "r") as f:
     for line in f:
         line = line.strip()
         if not line or line.startswith("#"):
@@ -174,7 +174,7 @@ for idx, row in sub_basins.iterrows():
     )
 
 # format and save
-plt.title("SST Monthly Mean Anomaly in North Atlantic Peak Season (Aug, 1860-2015) (10 regions, 1deg)")
+plt.title("GPI Monthly Mean Anomaly in North Atlantic Late Season (Sep-Oct, 1960-2015) (15 regions, 1deg)")
 plt.tight_layout()
-#plt.savefig("images/reg_gen_w_subbasin/coarse/SST/SST_mon_mean_anom_moving_window_1deg_peakszn_10reg_with_subbasins_coarse_v2.png")
+plt.savefig("images/reg_gen_w_subbasin/detailed subbasins/GPI/GPI_mon_mean_anom_moving_window_1deg_lateszn_15reg_with_subbasins_detailed.png")
 plt.show()
