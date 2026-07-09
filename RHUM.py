@@ -162,6 +162,9 @@ sub_basins["geometry"] = sub_basins["geometry"].apply(shift_lon)
 #     .rio.clip(region.geometry, region.crs, drop=True)
 # )
 
+# save monthly RH means to dataset (NOT ANOM)
+#rhum400_full.to_netcdf("datasets/RHUM/post-processing/RHUM400_mon_mean_1979-2025.nc")
+
 # ######################################################################################
 
 # # calculate moving window anomaly
@@ -210,101 +213,201 @@ sub_basins["geometry"] = sub_basins["geometry"].apply(shift_lon)
 
 #######################################################################################
 
-# plot anomaly with sub basin overlay
+# # plot anomaly with sub basin overlay
+
+# # read in MSLP anom dataset
+# ds = xr.open_dataset(r"datasets/RHUM/post-processing/RHUM400_mon_mean_1979-2025.nc")
+
+# var = ds['rhum']
+
+# # collapse over time dimension
+# # rhum400_anom = ds["rhum"].mean(dim="time")
+# rh = var.mean(dim="time")
+
+# # plot MSLP for hurricane season
+# fig = plt.figure(figsize=(8,6))
+# ax = plt.axes(projection=ccrs.PlateCarree()) 
+
+# # Plot sub-basins first
+# sub_basins.plot(
+#      ax=ax,
+#      facecolor='none',
+#      edgecolor='black',
+#      path_effects=[pe.withStroke(linewidth=3, foreground='white')],
+#      linewidth=1,
+#      transform=ccrs.PlateCarree(),
+#      zorder=4
+# )
+
+# # plot rh
+# #v = np.nanmax(np.abs(rh))
+
+# rh.plot(
+#     ax=ax,
+#     transform=ccrs.PlateCarree(),
+#     cmap="YlGnBu",
+#     vmin=0,
+#     vmax=75,
+#     cbar_kwargs={
+#         "label": "RH (%)",
+#         "pad": 0.08
+#     }
+# )
+
+# # add coastline outlines
+# ax.coastlines()
+
+# # set extent
+# lon_min = -108
+# lon_max = 23
+# lat_min = -3
+# lat_max = 93
+# ax.set_extent([lon_min, lon_max, lat_min, lat_max],crs=ccrs.PlateCarree())
+
+# # add axis labels
+# ax.set_xlabel("Longitude", labelpad=15)
+# ax.set_ylabel("Latitude", labelpad=15)
+
+# # Add gridlines with labels
+# gl = ax.gridlines(
+#     draw_labels=True,
+#     linewidth=0.1,
+#     color='gray',
+#     linestyle='--'
+# )
+
+# gl.xlocator = plt.MultipleLocator(10)  # longitude every 10°
+# gl.ylocator = plt.MultipleLocator(10)  # latitude every 10°
+# gl.xlabel_style = {'size': 10, 'color': 'black'}
+# gl.ylabel_style = {'size': 10, 'color': 'black'}
+
+# # set title
+# ax.set_title("Mean 400hPa Relative Humidity (Jun-Oct, 1979-2025)")
+
+# # add sub-basin labels
+# for idx, row in sub_basins.iterrows():
+#     point = row.geometry.centroid
+#     name = row["sub_basin_name"]
+
+#     # wrap text (adjust width as needed)
+#     name_wrapped = "\n".join(textwrap.wrap(name, width=10, break_long_words=False, break_on_hyphens=False))
+    
+#     if (lon_min <= point.x <= lon_max) and (lat_min <= point.y <= lat_max):
+#         txt = ax.text(
+#             point.x, point.y,
+#             name_wrapped,
+#             transform=ccrs.PlateCarree(),
+#             fontsize=7,
+#             weight='bold',
+#             ha='center',
+#             va='center',
+#             color='black',
+#             zorder=4
+#         )
+        
+#         txt.set_path_effects([
+#             pe.withStroke(linewidth=3, foreground="white")
+#         ])
+
+# plt.savefig("images/data_viz/RHUM400/rhum400_mon_mean_NAtl.png")
+# plt.show()
+
+#######################################################################################
+
+# timeseries of RH anom per sub basin
 
 # read in MSLP anom dataset
-ds = xr.open_dataset(r"datasets/RHUM/post-processing/RHUM400_anom_moving_window_1989-2015.nc")
+ds = xr.open_dataset(r"datasets/RHUM/post-processing/RHUM400_mon_mean_1979-2025.nc")
 
-anom = ds['rhum']
+rh = ds['rhum']
 
-# collapse over time dimension
-# rhum400_anom = ds["rhum"].mean(dim="time")
-rh = anom.mean(dim="time")
+# convert to dataframe
+df = rh.to_dataframe().reset_index()
 
-# plot MSLP for hurricane season
-fig = plt.figure(figsize=(8,6))
-ax = plt.axes(projection=ccrs.PlateCarree()) 
-
-# Plot sub-basins first
-sub_basins.plot(
-     ax=ax,
-     facecolor='none',
-     edgecolor='black',
-     path_effects=[pe.withStroke(linewidth=3, foreground='white')],
-     linewidth=1,
-     transform=ccrs.PlateCarree(),
-     zorder=4
+# convert LAT and LON to a new column Points which contains (lon, lat) and convert to a geo data frame so we can filter using polygons
+df_points = gpd.GeoDataFrame(
+    df, 
+    geometry = gpd.points_from_xy(df.lon, df.lat),
+    crs = "EPSG:4326"
 )
 
-# plot mslp
-v = np.nanmax(np.abs(rh))
+# convert lon to -180-180 from 0-360
+df_points['lon'] = ((df_points['lon'] + 180) % 360) - 180
 
-rh.plot(
-    ax=ax,
-    transform=ccrs.PlateCarree(),
-    cmap="RdBu_r",
-    vmin=-v,
-    vmax=v,
-    cbar_kwargs={
-        "label": "RH Anomaly (pp)",
-        "pad": 0.08
-    }
+# filter points to North Atlantic
+df_filtered = gpd.sjoin(
+    df_points,
+    basins[basins["basin name"] == "N Atlantic"],
+    how = "inner",
+    predicate = "within"
 )
 
-# add coastline outlines
-ax.coastlines()
+# add Year column so we can create a timeseries
+df_filtered['year'] = df_filtered['time'].dt.year
 
-# set extent
-lon_min = -108
-lon_max = 23
-lat_min = -3
-lat_max = 93
-ax.set_extent([lon_min, lon_max, lat_min, lat_max],crs=ccrs.PlateCarree())
-
-# add axis labels
-ax.set_xlabel("Longitude", labelpad=15)
-ax.set_ylabel("Latitude", labelpad=15)
-
-# Add gridlines with labels
-gl = ax.gridlines(
-    draw_labels=True,
-    linewidth=0.1,
-    color='gray',
-    linestyle='--'
+# join sub basin name for starting and ending points
+df_gdf = gpd.GeoDataFrame(
+    df_filtered,
+    geometry=gpd.points_from_xy(
+        df_filtered.lon,
+        df_filtered.lat
+    ),
+    crs=sub_basins.crs
 )
 
-gl.xlocator = plt.MultipleLocator(10)  # longitude every 10°
-gl.ylocator = plt.MultipleLocator(10)  # latitude every 10°
-gl.xlabel_style = {'size': 10, 'color': 'black'}
-gl.ylabel_style = {'size': 10, 'color': 'black'}
+# drop index_right column before joining again
+df_gdf = df_gdf.drop(columns="index_right", errors="ignore")
 
-# set title
-ax.set_title("Mean 400hPa Relative Humidity Anomaly (Jun-Oct, 1989-2015)")
+df_join = gpd.sjoin(
+    df_gdf,
+    sub_basins[['sub_basin_name', 'geometry']],
+    how='left',
+    predicate='within'
+)
 
-# add sub-basin labels
-for idx, row in sub_basins.iterrows():
-    point = row.geometry.centroid
-    name = row["sub_basin_name"]
+#print(df_join)
 
-    # wrap text (adjust width as needed)
-    name_wrapped = "\n".join(textwrap.wrap(name, width=10, break_long_words=False, break_on_hyphens=False))
-    
-    if (lon_min <= point.x <= lon_max) and (lat_min <= point.y <= lat_max):
-        txt = ax.text(
-            point.x, point.y,
-            name_wrapped,
-            transform=ccrs.PlateCarree(),
-            fontsize=7,
-            weight='bold',
-            ha='center',
-            va='center',
-            color='black',
-            zorder=4
-        )
-        
-        txt.set_path_effects([
-            pe.withStroke(linewidth=3, foreground="white")
-        ])
+# calc annual mean of rh anomaly per sub basin
+yearly_rh = (
+    df_join
+    .dropna(subset=["sub_basin_name"])
+    .pivot_table(
+        index="year",
+        columns="sub_basin_name",
+        values="rhum",
+        aggfunc="mean"
+    )
+)
 
-#plt.savefig("images/data_viz/RHUM400/rhum400_anom_moving_window_NAtl.png")
+#print(yearly_rh)
+
+# scatter plot per sub basin
+# filter to sub basin
+sb = 'Arctic'
+
+plt.figure(figsize=(10, 5))
+
+x = yearly_rh.index
+y = yearly_rh[sb]
+
+plt.plot(
+    x,
+    y,
+    marker="o",      
+    linestyle="-",   
+    color="blue"
+)
+
+# plt.axhline(
+#     y=0,
+#     color="gray",
+#     linestyle="--",
+#     linewidth=1
+# )
+
+plt.title(f'Mean Relative Humidity in North Atlantic - {sb}')
+plt.xlabel('Year')
+plt.ylabel('RH (%)')
+
+plt.savefig(f'images/data_viz/RHUM400/rhum400_mon_mean_timeseries_{sb}.png')
 plt.show()
