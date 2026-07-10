@@ -123,12 +123,7 @@ def shift_lon(geom):
 # shift lon
 sub_basins["geometry"] = sub_basins["geometry"].apply(shift_lon)
 
-
-
-
-
-
-
+#######################################################################################
 
 # combine mslp files (from NOAA https://downloads.psl.noaa.gov/Datasets/ncep.reanalysis2/Dailies/surface/)
 ds = xr.open_mfdataset(
@@ -158,44 +153,88 @@ mslp_full = (
     .rio.clip(region.geometry, region.crs, drop=True)
 )
 
-#######################################################################################
-## calculate the climatological mean
-#monthly_clim = mslp_filt.groupby("time.month").mean("time")
+# aggregate daily means to monthly means
+mslp_monthly = mslp_full.resample(time="MS").mean("time")
 
-## calculate the sst anomaly
-#mslp_anom = mslp_filt.groupby("time.month") - monthly_clim
+# # calculate moving window anomaly
+# # for moving mean, remove last 10 years (2015-2024) of data since we don't have enough future data to cover the long term mean calc
+# start = str(int(mslp_monthly.time.dt.year.min()) + 10)
+# end   = str(int(mslp_monthly.time.dt.year.max()) - 10)
+# mslp_filt = mslp_monthly.sel(time=slice(start, end))
+# mslp_filt = mslp_filt.load()
 
-#print(mslp_anom)
-#######################################################################################
-
-## calculate the mean MSLP (not for anomaly calc)
-#annual_mean = mslp_filt.groupby("time.year").mean("time") 
-
-#######################################################################################
-
-# calculate moving window anomaly
-# for moving mean, remove last 10 years (2015-2024) of data since we don't have enough future data to cover the long term mean calc
-start = str(int(mslp_full.time.dt.year.min()) + 10)
-end   = str(int(mslp_full.time.dt.year.max()) - 10)
-
-mslp_filt = mslp_full.sel(time=slice(start, end))
-
-mslp_filt = mslp_filt.load()
-
-#print(mslp_filt)
+mslp_monthly = mslp_monthly.load()
 
 # anomaly calc: use moving mean for year n (year-10, year+10)
-rolling_clim = mslp_filt.groupby("time.month").map(
+rolling_clim = mslp_monthly.groupby("time.month").map(
     lambda x: x.rolling(time=21, center=True).mean()
 )
-mslp_anom = mslp_filt - rolling_clim.sel(time = mslp_filt.time)
+mslp_anom = mslp_monthly - rolling_clim
 
-print(mslp_anom)
+mslp_anom = mslp_anom.sel(time=slice("1989-01-01", "2014-12-31"))
+
+#print(mslp_anom)
 
 #######################################################################################
 
-## save filtered datasets
-mslp_anom.to_netcdf("datasets/MSLP/post-processing/MSLP_anom_moving_window_1979-2024.nc")
+# save filtered datasets
+mslp_anom.to_netcdf("datasets/MSLP/post-processing/MSLP_anom_moving_window_1979-2024_v2_rolledUpMonthly.nc")
 
-#print(annual_mean.head())
+#print(mslp_anom)
 
+########################################################################################
+
+# join sub basins
+# convert DataArray to a DataFrame
+df = mslp_anom.to_dataframe(name="mslp_anom").reset_index()
+
+#print(df)
+
+# Create point geometries
+points = gpd.GeoDataFrame(
+    df,
+    geometry=gpd.points_from_xy(df.lon, df.lat),
+    crs="EPSG:4326"
+)
+
+# spatial join
+points = gpd.sjoin(
+    points,
+    sub_basins[["sub_basin_name", "geometry"]],
+    how="left",
+    predicate="within"
+)
+
+# add year column
+points["year"] = points["time"].dt.year
+
+# calculate yearly mean anomaly per sub-basin
+mslp_anom_yearly = (
+    points
+    .groupby(["year", "sub_basin_name"])["mslp_anom"]
+    .mean()
+    .reset_index()
+)
+
+#print(mslp_anom_yearly)
+
+########################################################################################
+
+# plot mean WS as a time series per sub basin
+
+# select sub basin
+sb = 'Mediterranean Sea'
+
+df_plot = mslp_anom_yearly[mslp_anom_yearly["sub_basin_name"] == sb]
+
+plt.figure(figsize=(10, 5))
+plt.plot(df_plot["year"], df_plot["mslp_anom"], marker="o", color = "green")
+
+plt.axhline(0, color="black", linewidth=1)
+plt.title(f"Mean Sea Level Pressure Anomaly in North Atlantic - {sb}")
+plt.xlabel("Year")
+plt.ylabel("MSLP Anomaly (Pa)")
+
+plt.tight_layout()
+plt.savefig(f"images/data_viz/MSLP/NOAA/MSLP_moving_window_anom_timeseries_{sb}.png")
+plt.show()
