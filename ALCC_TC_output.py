@@ -60,7 +60,7 @@ ds_pp.columns = ds_pp.columns.str.strip()
 ds_pp['mode'] = 'pp'
 
 # select mode to easily toggle between datasets
-mode = 'pn'
+mode = 'po'
 
 # create a dictionary for the mode datasets
 ds_dict = {
@@ -250,7 +250,7 @@ og_filt['sub_basin_start'] = og_join['sub_basin_name']
 #print(og_filt)
 
 # save table
-og_filt.to_csv(f"datasets/ALCC/post_python_processing/ALCC_tc_output_origins_perYr_wSubbasin_{mode}")
+#og_filt.to_csv(f"datasets/ALCC/post_python_processing/ALCC_tc_output_origins_perYr_wSubbasin_{mode}")
 
 #####################################################################################################################
 
@@ -274,10 +274,16 @@ ax = piv[sb].plot(
      figsize=(10, 6)
 )
 
-#ax.set_xlabel("Year")
-#ax.set_ylabel("Count of TC Origin Nodes")
+ax.set_ylim(0, 8)
+
+#ax.set_xlabel("Year", fontsize = 18)
+ax.set_xlabel("")  
+#ax.set_ylabel("Count of TC Origin Nodes", fontsize = 18, labelpad = 20)
 #ax.set_title(f"Number of TC Origin Nodes (mode {mode}) per Year in North Atlantic ({sb})")
+
+plt.xticks(fontsize=18)
+plt.yticks(fontsize=18)
 ax.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
 
-plt.savefig(f"images/data_viz/alcc/tc_origin_nodes_{mode}_{sb}_v2.png")
+plt.savefig(f"images/data_viz/alcc/tc_origin_nodes_{mode}_{sb}_v3.png")
 plt.show()

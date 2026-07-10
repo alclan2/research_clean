@@ -313,7 +313,7 @@ lifespan["sub_basin_diss"] = diss_join["sub_basin_name"].values
 
 # scatter plot with line of best fit
 # filter to sub basin
-sb = 'Mid-latitudinal Atlantic'
+sb = 'Deep Tropics'
 
 lifespan_sb = lifespan[lifespan["sub_basin_origin"] == sb]
 
@@ -355,6 +355,6 @@ plt.legend()
 plt.xticks(rotation=45, ha="right")
 plt.tight_layout()
 
-plt.savefig(f"images/data_viz/WS/WS_origin_vs_diss_wR2_{sb}.png")
+#plt.savefig(f"images/data_viz/WS/WS_origin_vs_diss_wR2_{sb}.png")
 
 plt.show()

@@ -3,15 +3,15 @@ import matplotlib.image as mpimg
 
 # File paths
 files = [
-    r"images/data_viz/alcc/tc_origin_nodes_np_Western Africa_v2.png",
-    r"images/data_viz/alcc/tc_origin_nodes_op_Western Africa_v2.png",
-    r"images/data_viz/alcc/tc_origin_nodes_pp_Western Africa_v2.png",
-    r"images/data_viz/alcc/tc_origin_nodes_no_Western Africa_v2.png",
-    r"images/data_viz/alcc/tc_origin_nodes_oo_Western Africa_v2.png",
-    r"images/data_viz/alcc/tc_origin_nodes_po_Western Africa_v2.png",
-    r"images/data_viz/alcc/tc_origin_nodes_nn_Western Africa_v2.png",
-    r"images/data_viz/alcc/tc_origin_nodes_on_Western Africa_v2.png",
-    r"images/data_viz/alcc/tc_origin_nodes_pn_Western Africa_v2.png",
+    r"images/data_viz/alcc/tc_origin_nodes_np_Western Africa_v3.png",
+    r"images/data_viz/alcc/tc_origin_nodes_op_Western Africa_v3.png",
+    r"images/data_viz/alcc/tc_origin_nodes_pp_Western Africa_v3.png",
+    r"images/data_viz/alcc/tc_origin_nodes_no_Western Africa_v3.png",
+    r"images/data_viz/alcc/tc_origin_nodes_oo_Western Africa_v3.png",
+    r"images/data_viz/alcc/tc_origin_nodes_po_Western Africa_v3.png",
+    r"images/data_viz/alcc/tc_origin_nodes_nn_Western Africa_v3.png",
+    r"images/data_viz/alcc/tc_origin_nodes_on_Western Africa_v3.png",
+    r"images/data_viz/alcc/tc_origin_nodes_pn_Western Africa_v3.png",
 ]
 
 fig, axes = plt.subplots(3, 3, figsize=(10, 6))
@@ -55,7 +55,7 @@ for i, col in enumerate(col_labels):
 
 for i, row in enumerate(row_labels):
     fig.text(
-        0.05,             # x position (left margin)
+        0.03,             # x position (left margin)
         0.75 - i * 0.30,  # y position (adjust spacing)
         row,
         ha="center",
@@ -68,5 +68,5 @@ plt.subplots_adjust(left=0.03, right=1, top=0.90, bottom=0, wspace=0, hspace=0)
 fig.suptitle("TC Origin Nodes in North Atlantic (Western Africa)", fontsize=14)
 
 #plt.tight_layout()
-#plt.savefig(r"images/data_viz/alcc/tc_origin_nodes_grid_Western Africa.png")
+plt.savefig(r"images/data_viz/alcc/tc_origin_nodes_grid_Western Africa_v2.png")
 plt.show()
