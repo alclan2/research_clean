@@ -178,7 +178,7 @@ mslp_anom = mslp_anom.sel(time=slice("1989-01-01", "2014-12-31"))
 #######################################################################################
 
 # save filtered datasets
-mslp_anom.to_netcdf("datasets/MSLP/post-processing/MSLP_anom_moving_window_1979-2024_v2_rolledUpMonthly.nc")
+#mslp_anom.to_netcdf("datasets/MSLP/post-processing/MSLP_anom_moving_window_1979-2024_v2_rolledUpMonthly.nc")
 
 #print(mslp_anom)
 
@@ -216,25 +216,28 @@ mslp_anom_yearly = (
     .reset_index()
 )
 
-#print(mslp_anom_yearly)
+print(mslp_anom_yearly)
 
-########################################################################################
+# save to csv
+mslp_anom_yearly.to_csv("datasets/MSLP/post-processing/MSLP_anom_moving_window_bySubbasin_table.csv")
 
-# plot mean WS as a time series per sub basin
+# ########################################################################################
 
-# select sub basin
-sb = 'Mediterranean Sea'
+# # plot mean WS as a time series per sub basin
 
-df_plot = mslp_anom_yearly[mslp_anom_yearly["sub_basin_name"] == sb]
+# # select sub basin
+# sb = 'Mediterranean Sea'
 
-plt.figure(figsize=(10, 5))
-plt.plot(df_plot["year"], df_plot["mslp_anom"], marker="o", color = "green")
+# df_plot = mslp_anom_yearly[mslp_anom_yearly["sub_basin_name"] == sb]
 
-plt.axhline(0, color="black", linewidth=1)
-plt.title(f"Mean Sea Level Pressure Anomaly in North Atlantic - {sb}")
-plt.xlabel("Year")
-plt.ylabel("MSLP Anomaly (Pa)")
+# plt.figure(figsize=(10, 5))
+# plt.plot(df_plot["year"], df_plot["mslp_anom"], marker="o", color = "green")
 
-plt.tight_layout()
-plt.savefig(f"images/data_viz/MSLP/NOAA/MSLP_moving_window_anom_timeseries_{sb}.png")
-plt.show()
+# plt.axhline(0, color="black", linewidth=1)
+# plt.title(f"Mean Sea Level Pressure Anomaly in North Atlantic - {sb}")
+# plt.xlabel("Year")
+# plt.ylabel("MSLP Anomaly (Pa)")
+
+# plt.tight_layout()
+# plt.savefig(f"images/data_viz/MSLP/NOAA/MSLP_moving_window_anom_timeseries_{sb}.png")
+# plt.show()

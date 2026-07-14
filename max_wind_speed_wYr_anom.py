@@ -28,6 +28,14 @@ df = df[['TID', 'LON', 'LAT', 'ISOTIME', 'WS', 'MSLP']]
 # convert longitude to 180 scale
 df['LON_180'] = ((df['LON'] + 180) % 360) - 180
 
+# first node: where the TC originates
+tc_origin = (
+    df
+    .sort_values(by='ISOTIME')
+    .groupby('TID', as_index=False)
+    .head(1)
+)
+
 #######################################################################################################
 
 # read in tc_basins file so we can filter to a specific ocean basin
@@ -139,8 +147,8 @@ basins["geometry"] = basins["geometry"].apply(shift_lon)
 
 # filter points
 points = gpd.GeoDataFrame(
-    df, 
-    geometry = gpd.points_from_xy(df.LON_180, df.LAT),
+    tc_origin, 
+    geometry = gpd.points_from_xy(tc_origin.LON_180, tc_origin.LAT),
     crs = "EPSG:4326"
 )
 
@@ -151,18 +159,18 @@ filtered = gpd.sjoin(
     predicate = "within"
 )
 
-# set axis bounds for the region (match same dimensions as reg gen plots)
-lon_min = filtered['LON_180'].min()
-lon_max = filtered['LON_180'].max()
-lat_min = filtered['LAT'].min()
-lat_max = filtered['LAT'].max()
+# # set axis bounds for the region (match same dimensions as reg gen plots)
+# lon_min = filtered['LON_180'].min()
+# lon_max = filtered['LON_180'].max()
+# lat_min = filtered['LAT'].min()
+# lat_max = filtered['LAT'].max()
 
-# set up 4x4 degree spacing
-lon_edges = np.arange(lon_min, lon_max + 4, 4)
-lat_edges = np.arange(lat_min, lat_max + 4, 4)
+# # set up 4x4 degree spacing
+# lon_edges = np.arange(lon_min, lon_max + 4, 4)
+# lat_edges = np.arange(lat_min, lat_max + 4, 4)
 
-filtered["lon_bin"] = np.floor(filtered["LON_180"] / 4) * 4
-filtered["lat_bin"] = np.floor(filtered["LAT"] / 4) * 4
+# filtered["lon_bin"] = np.floor(filtered["LON_180"] / 4) * 4
+# filtered["lat_bin"] = np.floor(filtered["LAT"] / 4) * 4
 
 # join sub basin name for each point
 filtered_gdf = gpd.GeoDataFrame(
@@ -184,38 +192,76 @@ filtered_join = gpd.sjoin(
 )
 
 # trim columns
-ds = filtered_join[['lon_bin', 'lat_bin', 'sub_basin_name', 'ISOTIME', 'WS', 'MSLP']]
+ds = filtered_join[['LON_180', 'LAT', 'sub_basin_name', 'ISOTIME', 'WS']]
 
 # add year column
 ds['YEAR'] = ds['ISOTIME'].dt.year
 
-# calc anomaly (baseline: entire time period)
-# overall climatology per sub-basin
-clim = ds.groupby("sub_basin_name")[["WS", "MSLP"]].mean().rename(
-    columns={"WS": "clim_WS", "MSLP": "clim_MSLP"}
+# filter to hurricane season
+ds_full = ds.loc[
+    ds["ISOTIME"].dt.month.isin([6, 7, 8, 9, 10])
+]
+
+# aggregate daily means to monthly means
+ds_monthly = (
+    ds_full
+    .groupby([
+        "sub_basin_name",
+        ds_full["ISOTIME"].dt.to_period("M")
+    ])["WS"]
+    .mean()
+    .reset_index()
 )
 
-# merge climatology back
-ds_anom = ds.merge(clim, on="sub_basin_name", how="left")
+# convert month back to datetime
+ds_monthly["ISOTIME"] = ds_monthly["ISOTIME"].dt.to_timestamp()
 
-# compute anomalies
-ds_anom["WS_anom"] = ds_anom["WS"] - ds_anom["clim_WS"]
-ds_anom["MSLP_anom"] = ds_anom["MSLP"] - ds_anom["clim_MSLP"]
+# calculate 21-year moving window (year-10 to year+10) by calendar month
+ds_monthly["MONTH"] = ds_monthly["ISOTIME"].dt.month
 
-# now aggregate yearly anomalies
-yearly_anom = (
-    ds_anom
-    .groupby(["YEAR", "sub_basin_name"], as_index=False)
-    .agg(
-        mean_WS_anom=("WS_anom", "mean"),
-        mean_MSLP_anom=("MSLP_anom", "mean")
+ds_monthly["rolling_clim"] = (
+    ds_monthly
+    .groupby(["sub_basin_name", "MONTH"])["WS"]
+    .transform(
+        lambda x: x.rolling(
+            21,
+            center=True,
+            min_periods=11
+        ).mean()
     )
 )
 
-#print(yearly_anom)
+# calculate anomaly
+ds_monthly["WS_anom"] = (
+    ds_monthly["WS"] -
+    ds_monthly["rolling_clim"]
+)
+
+# average by year and sub basin
+annual_anom = (
+    ds_monthly
+    .groupby([
+        "sub_basin_name",
+        ds_monthly["ISOTIME"].dt.year.rename("YEAR")
+    ])["WS_anom"]
+    .mean()
+    .reset_index()
+)
+
+# reorder columns
+annual_anom = annual_anom[
+    ["YEAR", "sub_basin_name", "WS_anom"]
+]
+
+print(annual_anom)
+
+annual_anom = annual_anom.loc[
+    (annual_anom["YEAR"] >= 1950) &
+    (annual_anom["YEAR"] <= 2014)
+]
 
 # save to csv
-#yearly_anom.to_csv("datasets/SyCLoPS/WS_MSLP_anom_bySubbasin_TC+TD_table.csv")
+annual_anom.to_csv("datasets/SyCLoPS/WS_anom_moving_window_bySubbasin_TC+TD_table.csv")
 
 #######################################################################################################
 
@@ -240,17 +286,83 @@ yearly_anom = (
 
 #######################################################################################################
 
-# compute correl between WS and MSLP
-corrs = (
-    yearly_anom
-    .groupby("sub_basin_name")
-    .apply(lambda x: x["mean_WS_anom"].corr(x["mean_MSLP_anom"]))
-    .rename("correlation")
-    .reset_index()
-)
+# # compute correl between WS and MSLP
+# corrs = (
+#     yearly_anom
+#     .groupby("sub_basin_name")
+#     .apply(lambda x: x["mean_WS_anom"].corr(x["mean_MSLP_anom"]))
+#     .rename("correlation")
+#     .reset_index()
+# )
 
-#print(yearly_anom.head())
-#print(corrs)
+# #print(yearly_anom.head())
+# #print(corrs)
 
-# save to csv
-corrs.to_csv("datasets/SyCLoPS/WS_MSLP_anom_correl_TC+TD.csv")
+# # save to csv
+# corrs.to_csv("datasets/SyCLoPS/WS_MSLP_anom_correl_TC+TD.csv")
+
+#######################################################################################################
+
+# calc WS moving window anom at origin node
+
+# # first node: where the TC originates
+# tc_origin = (
+#     df
+#     .sort_values(by='ISOTIME')
+#     .groupby('TID', as_index=False)
+#     .head(1)
+# )
+
+# # create origin/dissipation points
+# tc_origin_points = gpd.GeoDataFrame(
+#     tc_origin, 
+#     geometry = gpd.points_from_xy(tc_origin['LON_180'], tc_origin['LAT']),
+#     crs = "EPSG:4326"
+# )
+
+# # filter points to North Atlantic
+# tc_origin_NAtl = gpd.sjoin(
+#     tc_origin_points,
+#     sub_basins[['sub_basin_name', 'geometry']],
+#     how='left',
+#     predicate='within'
+# )
+
+# # rename and trim columns
+# tc_origin_NAtl = (tc_origin_NAtl[["TID", "ISOTIME", "LON", "LAT", "MSLP", "WS", "sub_basin_name"]]
+#              .rename(columns={
+#                  "ISOTIME": "origin_time",
+#                  "MSLP": "MSLP_origin",
+#                  "WS": "WS_origin",
+#                  "LON": "LON_origin",
+#                  "LAT": "LAT_origin",
+#                  "sub_basin_name": "origin_sub_basin"
+#                  }))
+
+# # add year column
+# tc_origin_NAtl['year'] = tc_origin_NAtl['origin_time'].dt.year
+
+# print(tc_origin_NAtl)
+
+# # # calc anomaly (baseline: entire time period)
+# # # overall climatology per sub-basin
+# # clim = tc_origin_NAtl.groupby("origin_sub_basin")["WS_origin"].mean().rename(
+# #     columns={"WS": "clim_WS", "MSLP": "clim_MSLP"}
+# # )
+
+# # # merge climatology back
+# # ds_anom = tc_origin_NAtl.merge(clim, on="sub_basin_name", how="left")
+
+# # # compute anomalies
+# # ds_anom["WS_anom"] = ds_anom["WS"] - ds_anom["clim_WS"]
+# # ds_anom["MSLP_anom"] = ds_anom["MSLP"] - ds_anom["clim_MSLP"]
+
+# # # now aggregate yearly anomalies
+# # yearly_anom = (
+# #     ds_anom
+# #     .groupby(["YEAR", "sub_basin_name"], as_index=False)
+# #     .agg(
+# #         mean_WS_anom=("WS_anom", "mean"),
+# #         mean_MSLP_anom=("MSLP_anom", "mean")
+# #     )
+# # )
