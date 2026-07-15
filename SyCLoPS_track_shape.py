@@ -11,6 +11,7 @@ import matplotlib.patheffects as pe
 import textwrap
 import matplotlib.colors as colors
 import seaborn as sns
+from matplotlib.ticker import MaxNLocator
 
 # read in tc_basins file so we can filter to a specific ocean basin
 polygons_dict = {}
@@ -235,8 +236,11 @@ tc_track['sub_basin_start'] = start_join['sub_basin_name']
 tc_track['sub_basin_end'] = end_join['sub_basin_name']
 
 # calc difference in lat/lon
-tc_track['LON_diff'] = (tc_track['LON_end'] - tc_track['LON_start']).abs()
-tc_track['LAT_diff'] = (tc_track['LAT_end'] - tc_track['LAT_start']).abs()
+tc_track['LON_diff_abs'] = (tc_track['LON_end'] - tc_track['LON_start']).abs()
+tc_track['LAT_diff_abs'] = (tc_track['LAT_end'] - tc_track['LAT_start']).abs()
+
+tc_track['LON_diff'] = tc_track['LON_end'] - tc_track['LON_start']
+tc_track['LAT_diff'] = tc_track['LAT_end'] - tc_track['LAT_start']
 
 ##############################################################################################################
 
@@ -268,34 +272,148 @@ tc_track['LAT_diff'] = (tc_track['LAT_end'] - tc_track['LAT_start']).abs()
 
 ##############################################################################################################
 
-# plot track displacement per sub basin
+# # plot track displacement per sub basin
 
-# pivot by sub basin for plot
-plt.figure(figsize=(12, 6))
+# # pivot by sub basin for plot
+# plt.figure(figsize=(12, 6))
 
-drop_basins = ['Arctic', 'Mediterranean Sea']
-tc_filtered = tc_track[~tc_track['sub_basin_start'].isin(drop_basins)]
+# drop_basins = ['Arctic', 'Mediterranean Sea']
+# tc_filtered = tc_track[~tc_track['sub_basin_start'].isin(drop_basins)]
 
-#print(tc_filtered)
+# #print(tc_filtered)
 
-# alpha order
-order = sorted(tc_filtered['sub_basin_start'].dropna().unique())
+# # alpha order
+# order = sorted(tc_filtered['sub_basin_start'].dropna().unique())
 
-sns.boxplot(
-    data=tc_filtered,
-    x='sub_basin_start',
-    y='LON_diff',
-    color = 'lightblue',
-    linecolor = 'black',
-    order = order
+# sns.boxplot(
+#     data=tc_filtered,
+#     x='sub_basin_start',
+#     y='LON_diff',
+#     color = 'lightblue',
+#     linecolor = 'black',
+#     order = order
+# )
+
+# plt.xticks(rotation=45, ha='right')
+# plt.ylabel('Absolute Longitude Displacement (degrees)')
+# plt.xlabel('Origin Sub-basin')
+# plt.title('TC Track Longitude Displacement Distribution by Origin Sub-basin')
+
+# plt.tight_layout()
+
+# #plt.savefig("images/data_viz/TC_track/track_plots/TC_track_LON_distance_boxplot_bySubbasin.png")
+# plt.show()
+
+##############################################################################################################
+
+# # calc east v west and north v south dispacement per sub basin
+
+# filter columns
+ds2 = tc_track[['TID', 'sub_basin_start', 'sub_basin_end', 'LON_diff', 'LAT_diff']]
+
+# create columns for east v west and north v south movement
+ds2['East/West_displ'] = np.where(
+    ds2['LON_diff'] > 0,
+    'East',
+    np.where(ds2['LON_diff'] < 0, 
+    'West', 
+    'No displacement')
 )
 
-plt.xticks(rotation=45, ha='right')
-plt.ylabel('Absolute Longitude Displacement (degrees)')
-plt.xlabel('Origin Sub-basin')
-plt.title('TC Track Longitude Displacement Distribution by Origin Sub-basin')
+ds2['North/South_displ'] = np.where(
+    ds2['LAT_diff'] > 0,
+    'North',
+    np.where(ds2['LAT_diff'] < 0, 
+    'South', 
+    'No displacement')
+)
+
+# #print(ds2)
+
+# # pivot
+# piv_EW = ds2.pivot_table(
+#     index='sub_basin_start',
+#     columns=['East/West_displ'],
+#     values='TID',
+#     aggfunc='count',
+#     fill_value=0
+# )
+
+# piv_NS = ds2.pivot_table(
+#     index='sub_basin_start',
+#     columns=['North/South_displ'],
+#     values='TID',
+#     aggfunc='count',
+#     fill_value=0
+# )
+
+# # print(piv_EW)
+# # print(piv_NS)
+
+# # bar plot (all sub basins)
+# piv_EW.plot(kind='bar', figsize=(10, 6))
+
+# plt.ylabel('Count of TCs')
+# plt.xlabel('Origin Sub-basin')
+# plt.title('TC East vs. West Track Displacement From Origin Sub-basin')
+# plt.xticks(rotation=45, ha='right')
+# plt.legend(['East', 'No Displacement', 'West'])
+# plt.tight_layout()
+
+# plt.savefig("images/data_viz/TC_track/track_plots/TC_track_distance_EastvsWest_bySubbasin.png")
+# plt.show()
+
+##############################################################################################################
+
+# per sub basin plots 
+
+# sub basin toggle
+sb = 'Mid-latitudinal Atlantic'
+
+ds3 = ds2[ds2['sub_basin_start'] == sb]
+
+fig, ax = plt.subplots(figsize=(8,4))
+
+ax.hist(ds3['LON_diff'], bins=20, edgecolor='black', color='lightblue')
+
+ax.axvline(0, color='red', linestyle='--', label='No displacement')
+
+ax = plt.gca()
+ax.yaxis.set_major_locator(MaxNLocator(integer=True))
+
+ax.set_xlabel('Longitude displacement (degrees)')
+ax.set_ylabel('Number of TCs')
+ax.set_title(f'East vs. West Displacement From TCs Originating in {sb}', pad = 30)
+
+ax.text(0.05, 1.05, 'West',
+        transform=ax.transAxes,
+        ha='left', va='center')
+
+ax.annotate(
+    '',
+    xy=(0.12, 1.05),      # arrow tip (left)
+    xytext=(0.30, 1.05),  # arrow starts (right)
+    xycoords='axes fraction',
+    textcoords='axes fraction',
+    arrowprops=dict(arrowstyle='->', lw=1.5)
+)
+
+# North
+ax.annotate(
+    '',
+    xy=(0.88, 1.05),      # arrow tip (right)
+    xytext=(0.70, 1.05),  # arrow starts (left)
+    xycoords='axes fraction',
+    textcoords='axes fraction',
+    arrowprops=dict(arrowstyle='->', lw=1.5)
+)
+
+ax.text(0.95, 1.05, 'East',
+        transform=ax.transAxes,
+        ha='right', va='center')
+
+ax.legend()
 
 plt.tight_layout()
-
-plt.savefig("images/data_viz/TC_track/track_plots/TC_track_LON_distance_boxplot_bySubbasin.png")
+plt.savefig(f'images/data_viz/TC_track/track_plots/TC_track_distance_EastvsWest_{sb}.png', dpi=300)
 plt.show()
