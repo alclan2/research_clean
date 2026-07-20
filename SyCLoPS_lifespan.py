@@ -9,6 +9,8 @@ import matplotlib.patheffects as pe
 import textwrap
 import matplotlib.colors as colors
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
+
 
 # read in tc_basins file so we can filter to a specific ocean basin
 polygons_dict = {}
@@ -280,81 +282,111 @@ lifespan["sub_basin_diss"] = diss_join["sub_basin_name"].values
 
 ############################################################################################################
 
-# # scatter plot of lifespan vs. WS/MSLP
+# scatter plot of lifespan vs. WS/MSLP
 
-# # filter to sub basin
-# sb = 'Mid-latitudinal Atlantic'
-
-# lifespan_sb = lifespan[lifespan["sub_basin_origin"] == sb]
-
-# #print(lifespan_sb.head())
-
-# plt.figure(figsize=(10, 5))
-
-# plt.scatter(
-#     x = lifespan_sb["WS_origin"],
-#     y = lifespan_sb["WS_diss"],
-#     color = 'purple',
-#     s=50
-# )
-
-# plt.xlabel("WS at Origin (m/s)")
-# plt.ylabel("WS at Dissipation (m/s)")
-# plt.title(f"TC Wind Speed at Origin vs. Dissipation - {sb}")
-
-# plt.xticks(rotation=45, ha="right")
-# plt.tight_layout()
-
-# plt.savefig(f"images/data_viz/WS/WS_origin_vs_diss_{sb}.png")
-
-# plt.show()
-
-############################################################################################################
-
-# scatter plot with line of best fit
 # filter to sub basin
-sb = 'Deep Tropics'
+sb = 'Mid-latitudinal Atlantic'
 
 lifespan_sb = lifespan[lifespan["sub_basin_origin"] == sb]
 
-plt.figure(figsize=(10, 5))
+# create custom color bar bins
+bins = [0, 2, 5, 8, 11, np.inf]
+labels = ["≤2", "3-5", "6-8", "9-11", "≥12"]
 
-x = lifespan_sb["WS_origin"]
-y = lifespan_sb["WS_diss"]
-
-plt.scatter(
-    x=x,
-    y=y,
-    color='purple',
-    s=50
+lifespan_sb["lifespan_bin"] = pd.cut(
+    lifespan_sb["lifespan_days"],
+    bins=bins,
+    labels=labels,
+    include_lowest=True
 )
 
-# Line of best fit
-m, b = np.polyfit(x, y, 1)
-x_fit = np.linspace(x.min(), x.max(), 100)
+# # get 5 evenly spaced colors from the viridis colormap
+# viridis = [tuple(c) for c in plt.cm.viridis(np.linspace(0, 1, len(labels)))]
 
-# add R2
-from sklearn.metrics import r2_score
-y_pred = m * x + b
-r2 = r2_score(y, y_pred)
+# create a dictionary mapping each label to a color
+colors_list = plt.cm.tab10(np.linspace(0, 1, len(labels)))
+colors = dict(zip(labels, colors_list))
 
-plt.plot(
-    x_fit,
-    m * x_fit + b,
-    color="black",
-    linewidth=2,
-    label=f"Best fit: y={m:.2f}x+{b:.2f}, R²={r2:.2f}"
+# map each point to its color
+point_colors = [colors[x] for x in lifespan_sb["lifespan_bin"]]
+
+# plot the scatter plot
+plt.figure(figsize=(10, 5))
+
+plt.scatter(
+    lifespan_sb["WS_origin"],
+    lifespan_sb["WS_diss"],
+    c=point_colors,
+    s=50
 )
 
 plt.xlabel("WS at Origin (m/s)")
 plt.ylabel("WS at Dissipation (m/s)")
 plt.title(f"TC Wind Speed at Origin vs. Dissipation - {sb}")
 
-plt.legend()
+legend_elements = [
+    Line2D([0], [0], marker='o', color='w',
+           label=label,
+           markerfacecolor=color,
+           markersize=8)
+    for label, color in colors.items()
+]
+
+plt.legend(handles=legend_elements, title="Lifespan (days)")
 
 plt.xticks(rotation=45, ha="right")
 plt.tight_layout()
 
-#plt.savefig(f"images/data_viz/WS/WS_origin_vs_diss_wR2_{sb}.png")
+plt.savefig(f"images/data_viz/WS/WS_origin_vs_diss_withLifespan_{sb}.png")
 
 plt.show()
+
+############################################################################################################
+
+# # scatter plot with line of best fit
+# # filter to sub basin
+# sb = 'Deep Tropics'
+
+# lifespan_sb = lifespan[lifespan["sub_basin_origin"] == sb]
+
+# plt.figure(figsize=(10, 5))
+
+# x = lifespan_sb["WS_origin"]
+# y = lifespan_sb["WS_diss"]
+
+# plt.scatter(
+#     x=x,
+#     y=y,
+#     color='purple',
+#     s=50
+# )
+
+# # Line of best fit
+# m, b = np.polyfit(x, y, 1)
+# x_fit = np.linspace(x.min(), x.max(), 100)
+
+# # add R2
+# from sklearn.metrics import r2_score
+# y_pred = m * x + b
+# r2 = r2_score(y, y_pred)
+
+# plt.plot(
+#     x_fit,
+#     m * x_fit + b,
+#     color="black",
+#     linewidth=2,
+#     label=f"Best fit: y={m:.2f}x+{b:.2f}, R²={r2:.2f}"
+# )
+
+# plt.xlabel("WS at Origin (m/s)")
+# plt.ylabel("WS at Dissipation (m/s)")
+# plt.title(f"TC Wind Speed at Origin vs. Dissipation - {sb}")
+
+# plt.legend()
+
+# plt.xticks(rotation=45, ha="right")
+# plt.tight_layout()
+
+# #plt.savefig(f"images/data_viz/WS/WS_origin_vs_diss_wR2_{sb}.png")
+
+# plt.show()

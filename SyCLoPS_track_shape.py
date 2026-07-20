@@ -368,24 +368,34 @@ ds2['North/South_displ'] = np.where(
 # per sub basin plots 
 
 # sub basin toggle
-sb = 'Mid-latitudinal Atlantic'
-
+sb = 'Western Africa'
 ds3 = ds2[ds2['sub_basin_start'] == sb]
 
+# define 4deg bins so we have a 0 displacement bin
+bin_width = 4
+xmin = np.floor(ds3['LAT_diff'].min() / bin_width) * bin_width
+xmax = np.ceil(ds3['LAT_diff'].max() / bin_width) * bin_width
+edges = np.arange(xmin - bin_width/2, xmax + bin_width, bin_width)
+
+# set up fig
 fig, ax = plt.subplots(figsize=(8,4))
 
-ax.hist(ds3['LON_diff'], bins=20, edgecolor='black', color='lightblue')
+# histogram
+ax.hist(ds3['LAT_diff'], bins=edges, edgecolor='black', color='lightblue')
 
+# 0 line
 ax.axvline(0, color='red', linestyle='--', label='No displacement')
 
+# axes
 ax = plt.gca()
 ax.yaxis.set_major_locator(MaxNLocator(integer=True))
-
-ax.set_xlabel('Longitude displacement (degrees)')
+ax.set_xlabel('Latitude displacement (degrees)')
 ax.set_ylabel('Number of TCs')
-ax.set_title(f'East vs. West Displacement From TCs Originating in {sb}', pad = 30)
+ax.set_title(f'North vs. South Displacement From TCs Originating in {sb}', pad = 30)
 
-ax.text(0.05, 1.05, 'West',
+
+# add arrows and text to show what positive and negative mean
+ax.text(0.05, 1.05, 'South',
         transform=ax.transAxes,
         ha='left', va='center')
 
@@ -398,7 +408,6 @@ ax.annotate(
     arrowprops=dict(arrowstyle='->', lw=1.5)
 )
 
-# North
 ax.annotate(
     '',
     xy=(0.88, 1.05),      # arrow tip (right)
@@ -408,12 +417,12 @@ ax.annotate(
     arrowprops=dict(arrowstyle='->', lw=1.5)
 )
 
-ax.text(0.95, 1.05, 'East',
+ax.text(0.95, 1.05, 'North',
         transform=ax.transAxes,
         ha='right', va='center')
 
 ax.legend()
 
 plt.tight_layout()
-plt.savefig(f'images/data_viz/TC_track/track_plots/TC_track_distance_EastvsWest_{sb}.png', dpi=300)
+plt.savefig(f'images/data_viz/TC_track/track_plots/TC_track_distance_NorthvsSouth_{sb}.png', dpi=300)
 plt.show()
