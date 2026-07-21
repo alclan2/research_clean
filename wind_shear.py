@@ -125,127 +125,130 @@ sub_basins["geometry"] = sub_basins["geometry"].apply(shift_lon)
 
 #######################################################################################
 
-# combine u-wind files (from NOAA https://downloads.psl.noaa.gov/Datasets/ncep.reanalysis2/Dailies/pressure/)
+# # combine u-wind files (from NOAA https://downloads.psl.noaa.gov/Datasets/ncep.reanalysis2/Dailies/pressure/)
 
-# remove time bounds variable since we don't need it/mismatched data types across raw files
-def clean(ds):
-    if "time_bnds" in ds:
-        ds = ds.drop_vars("time_bnds")
+# # remove time bounds variable since we don't need it/mismatched data types across raw files
+# def clean(ds):
+#     if "time_bnds" in ds:
+#         ds = ds.drop_vars("time_bnds")
     
-    return ds
+#     return ds
 
-ds = xr.open_mfdataset(
-    "datasets/u-wind/*.nc",
-    combine="by_coords",
-    preprocess=clean,
-    chunks={"time": 365}
-)
-ds = ds.sel(level=[850, 200])
+# ds = xr.open_mfdataset(
+#     "datasets/u-wind/*.nc",
+#     combine="by_coords",
+#     preprocess=clean,
+#     chunks={"time": 365}
+# )
+# ds = ds.sel(level=[850, 200])
 
-# convert lon to -180-180
-ds = ds.assign_coords(
-    lon=(((ds.lon + 180) % 360) - 180)
-).sortby("lon")
+# # convert lon to -180-180
+# ds = ds.assign_coords(
+#     lon=(((ds.lon + 180) % 360) - 180)
+# ).sortby("lon")
 
-# add CRS and spatial dims
-ds = ds.rio.write_crs("EPSG:4326")
-ds = ds.rio.set_spatial_dims(x_dim="lon", y_dim="lat")
+# # add CRS and spatial dims
+# ds = ds.rio.write_crs("EPSG:4326")
+# ds = ds.rio.set_spatial_dims(x_dim="lon", y_dim="lat")
 
-# filter to N Atlantic basin
-region_names = [
-    "Deep Tropics",
-    "Caribbean",
-    "Eastern Tropics",
-    "Gulf (A)",
-    "Gulf (B)",
-    "Southeastern Seaboard",
-    "Central Atlantic",
-    "Subtropical Atlantic",
-    "Northeastern Seaboard",
-    "Mid-latitudinal Atlantic",
-    "Mid-latitudinal US/CA",
-    "Arctic",
-    "Northern Europe",
-    "Western Africa",
-    "Mediterranean Sea"
-]
-region = sub_basins[sub_basins["sub_basin_name"].isin(region_names)]
+# # filter to N Atlantic basin
+# region_names = [
+#     "Deep Tropics",
+#     "Caribbean",
+#     "Eastern Tropics",
+#     "Gulf (A)",
+#     "Gulf (B)",
+#     "Southeastern Seaboard",
+#     "Central Atlantic",
+#     "Subtropical Atlantic",
+#     "Northeastern Seaboard",
+#     "Mid-latitudinal Atlantic",
+#     "Mid-latitudinal US/CA",
+#     "Arctic",
+#     "Northern Europe",
+#     "Western Africa",
+#     "Mediterranean Sea"
+# ]
+# region = sub_basins[sub_basins["sub_basin_name"].isin(region_names)]
 
-# filter to hurricane season
-ds_filt = (
-    ds
-    .where(ds.time.dt.month.isin([6, 7, 8, 9, 10]), drop=True)
-    .rio.clip(region.geometry, region.crs, drop=True)
-)
+# # filter to hurricane season
+# ds_filt = (
+#     ds
+#     .where(ds.time.dt.month.isin([6, 7, 8, 9, 10]), drop=True)
+#     .rio.clip(region.geometry, region.crs, drop=True)
+# )
 
-# select 250 and 800 hPa
-uwind = ds_filt.uwnd.sel(level=[850, 200])
+# # select 250 and 800 hPa
+# uwind = ds_filt.uwnd.sel(level=[850, 200])
 
-# calculate vertical shear
-shear = uwind.sel(level=200) - uwind.sel(level=850)
+# # calculate vertical shear
+# shear = uwind.sel(level=200) - uwind.sel(level=850)
 
-# convert to data frame
-shear_df = (
-    shear
-    .rename("shear")
-    .to_dataframe()
-    .reset_index()
-    .dropna(subset=["shear"])
-)
+# # convert to data frame
+# shear_df = (
+#     shear
+#     .rename("shear")
+#     .to_dataframe()
+#     .reset_index()
+#     .dropna(subset=["shear"])
+# )
 
-# Create point geometries
-points = gpd.GeoDataFrame(
-    shear_df,
-    geometry=gpd.points_from_xy(
-        shear_df.lon,
-        shear_df.lat
-    ),
-    crs="EPSG:4326"
-)
+# # Create point geometries
+# points = gpd.GeoDataFrame(
+#     shear_df,
+#     geometry=gpd.points_from_xy(
+#         shear_df.lon,
+#         shear_df.lat
+#     ),
+#     crs="EPSG:4326"
+# )
 
-# spatial join
-shear_sb = gpd.sjoin(
-    points,
-    sub_basins[["sub_basin_name", "geometry"]],
-    how="left",
-    predicate="covered_by"
-)
+# # spatial join
+# shear_sb = gpd.sjoin(
+#     points,
+#     sub_basins[["sub_basin_name", "geometry"]],
+#     how="left",
+#     predicate="covered_by"
+# )
 
-# add year column
-shear_sb["year"] = shear_sb["time"].dt.year
+# # add year column
+# shear_sb["year"] = shear_sb["time"].dt.year
 
-# trim columns
-shear_sb = shear_sb[['time', 'lat', 'lon', 'shear', 'sub_basin_name', 'year']]
+# # trim columns
+# shear_sb = shear_sb[['time', 'lat', 'lon', 'shear', 'sub_basin_name', 'year']]
 
-# pivot to yearly values
-shear_yr = (
-    shear_sb.groupby(["year", "sub_basin_name"], as_index=False)["shear"]
-      .mean()
-)
+# # pivot to yearly values
+# shear_yr = (
+#     shear_sb.groupby(["year", "sub_basin_name"], as_index=False)["shear"]
+#       .mean()
+# )
 
-#print(shear_yr)
+# #print(shear_yr)
 
-# save to csv
-shear_yr.to_csv("datasets/u-wind/post_processing/wind_shear_850_200_yearly_by_subbasin.csv")
+# # save to csv
+# shear_yr.to_csv("datasets/u-wind/post_processing/wind_shear_850_200_yearly_by_subbasin.csv")
 
 ########################################################################################
 
-# plot mean WS as a time series per sub basin
+# load csv
+ushear = pd.read_csv("datasets/u-wind/post_processing/wind_shear_850_200_yearly_by_subbasin.csv")
 
-# # select sub basin
-# sb = 'Caribbean'
+#print(ushear)
 
-# df_plot = shear_yr[shear_yr["sub_basin_name"] == sb]
+# select sub basin
+sb = 'Western Africa'
 
-# #print(df_plot)
+df_plot = ushear[ushear["sub_basin_name"] == sb]
 
-# plt.figure(figsize=(10, 5))
-# plt.plot(df_plot["year"], df_plot["uwnd"], marker="o", color = "green")
+#print(df_plot)
 
-# plt.title(f"Wind Shear in North Atlantic - {sb}")
-# plt.xlabel("Year")
-# plt.ylabel("Wind Shear (m/s)")
+plt.figure(figsize=(10, 5))
+plt.plot(df_plot["year"], df_plot["shear"], marker="o", color = "blue")
 
-# plt.tight_layout()
-# # plt.savefig(f"images/data_viz/MSLP/NOAA/MSLP_moving_window_anom_timeseries_{sb}.png")
-# plt.show()
+plt.title(f"Wind Shear (850-200hPa) in North Atlantic - {sb}")
+plt.xlabel("Year")
+plt.ylabel("Zonal Wind Shear (m/s)")
+
+plt.tight_layout()
+plt.savefig(f"images/data_viz/u_shear/u_wind_shear_850_200hPa_timeseries_{sb}.png")
+plt.show()
