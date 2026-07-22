@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import xarray as xr
 import math
 from geopy.distance import geodesic
+import seaborn as sns
 
 # read in tc_basins file so we can filter to a specific ocean basin
 polygons_dict = {}
@@ -134,7 +135,7 @@ tc['LON'] = ((tc['LON'] + 180) % 360) - 180
 tc = tc[['TID', 'LON', 'LAT', 'ISOTIME', 'MSLP', 'WS']]
 
 # convert MSLP to hPa from Pa
-tc['MSLP'] = tc['MSLP']/100
+#tc['MSLP'] = tc['MSLP']/100
 
 # calc translation speed since we'll need it later
 tc['translation_speed'] = None
@@ -158,20 +159,28 @@ for tid, group in tc.groupby("TID"):
         # Translation speed (km/h)
         tc.loc[idx[i], "translation_speed"] = distance / dt
 
+# set first time step translation speed to NaN
+tc["translation_speed"] = pd.to_numeric(
+    tc["translation_speed"], errors="coerce"
+)
+
 # add column for average environmental pressure
-tc['pn'] = 1015
+tc['pn'] = 101500 #Pa
 
 # change in pressure from environment to center
 tc['delta_p'] = tc['pn'] - tc['MSLP']
+
+# Pressure deficit in hPa for Holland B equation
+tc['delta_p_hPa'] = tc['delta_p'] / 100
 
 # calc pressure using Eq (8)
 tc['p_rmw'] = tc['MSLP'] + (tc['delta_p'])/3.7
 
 # add dry gas constant
-tc['Rd'] = 8.314 # hPaL/molK
+tc['Rd'] = 287.05   # J kg^-1 K^-1
 
-# e
-tc['e'] = math.e
+# # e
+# tc['e'] = math.e
 
 # convert LAT to absolute value
 tc['LAT_abs'] = tc['LAT'].abs()
@@ -194,14 +203,138 @@ tc = tc.drop(["qm_num", "qm_den"], axis=1)
 
 # use the Holland P-W model to derive max wind speed
 # # parameter x
-tc['x'] = 0.6 * (1-(tc['delta_p']/215))
-#x = 0.6*(1-(delta_p/215))
+tc['x'] = 0.6 * (1 - tc['delta_p_hPa']/215)
+
+# partial of pc wrt time
+tc["dt_hours"] = (tc.groupby("TID")["ISOTIME"].diff().dt.total_seconds() / 3600)
+tc["dMSLP/dt"] = (tc.groupby("TID")["MSLP"].diff()/tc["dt_hours"]) / 100
 
 # parameter bs
-tc['bs'] = (-4.4 * 10**(-5))*(tc['delta_p']**2) + 0.01*tc['delta_p'] + 0.03*tc['delta_p'] - 0.014*tc['LAT_abs'] + 0.15*(tc['translation_speed']**tc['x']) + 1.0
-#bs = (-4.4 * 10^(-5)) * (delta_p^2) + (0.01 * delta_p) + (0.03 * delta_p) - (0.014 * lat) + (0.15 * vt^x) + 1.0
+tc["bs"] = (
+    (-4.4 * 10**(-5)) * (tc["delta_p_hPa"]**2)
+    + 0.01 * tc["delta_p_hPa"]
+    + 0.03 * tc["dMSLP/dt"]
+    - 0.014 * tc["LAT_abs"]
+    + 0.15 * (tc["translation_speed"] ** tc["x"])
+    + 1.0
+)
 
-# # # maximum wind
-# # vm = ((b*p*delta_p)/(Rd*T*e))^0.5
+# maximum wind
+tc['vm'] = ((tc['bs']*tc['p_rmw']*tc['delta_p'])/(tc['Rd']*tc['Tvs (K)']*np.e))**0.5
 
-print(tc)
+# print(tc.head(20))
+
+#################################################################################################
+
+# now join sub basins and plot per sub basin
+
+# create points
+points = gpd.GeoDataFrame(
+    tc,
+    geometry=gpd.points_from_xy(
+        tc['LON'],
+        tc['LAT']
+    ),
+    crs="EPSG:4326"
+)
+
+# spatial join
+tc_sb = gpd.sjoin(
+    points,
+    sub_basins[["sub_basin_name", "geometry"]],
+    how="left",
+    predicate="covered_by"
+)
+
+# trim columns
+tc_sb = tc_sb[['TID', 'LON', 'LAT', 'ISOTIME', 'MSLP', 'WS', 'vm', 'sub_basin_name']]
+
+# create year column
+tc_sb['year'] = tc['ISOTIME'].dt.year
+
+# # filter to specific sub basin
+# sb = 'Western Africa'
+
+# tc_sb_filt = tc_sb[tc_sb['sub_basin_name'] == sb]
+
+# find the max vm per TID
+tc_max = (
+    tc_sb.groupby(["TID", "sub_basin_name", "year"])["vm"]
+    .max()
+    .reset_index()
+)
+
+# average per yr to create time series
+annual_max = (
+    tc_max
+    .groupby(["sub_basin_name", "year"])["vm"]
+    .max()
+    .reset_index()
+)
+
+# # scatter plot
+# plt.figure(figsize=(12,6))
+
+# plt.plot(
+#     annual_max['year'],
+#     annual_max['vm'],
+#     marker='o',
+#     linewidth=1
+# )
+
+# plt.xlabel("Year")
+# plt.ylabel("Maximum Wind (m/s)")
+# plt.title(f"TC Maximum Wind Speed in North Atlantic - {sb}")
+
+# #plt.savefig(f'images/data_viz/vmax_PW/max_wind_speed_vm_PW_timeseries_{sb}')
+# plt.show()
+
+#################################################################################################
+
+# tc_valid = tc_sb.dropna(subset=["vm"])
+
+# plt.figure(figsize=(10,6))
+
+plt.figure(figsize=(10, 6))
+
+order = sorted(tc_max["sub_basin_name"].dropna().unique())
+
+sns.boxplot(
+    data=tc_max,
+    x="sub_basin_name",
+    y="vm",
+    order=order
+)
+
+plt.xticks(rotation=45, ha="right")
+plt.xlabel("Sub-basin")
+plt.ylabel("Maximum Wind Speed (m/s)")
+plt.title("Distribution of TC Maximum Wind Speed by Sub-basin in North Atlantic")
+
+plt.savefig('images/data_viz/vmax_PW/max_wind_speed_vm_distribution_max_per_TID.png')
+plt.tight_layout()
+plt.show()
+
+#################################################################################################
+
+# storm_peak = (
+#     annual_max.dropna(subset=["vm"])
+#     .groupby(["TID", "sub_basin_name"])["vm"]
+#     .max()
+#     .reset_index()
+# )
+
+# plt.figure(figsize=(10,5))
+
+# sns.boxplot(
+#     data=storm_peak,
+#     x="sub_basin_name",
+#     y="vm"
+# )
+
+# plt.xticks(rotation=45, ha="right")
+# plt.ylabel("Peak Wind Speed (m/s)")
+# plt.xlabel("Sub-basin")
+# plt.title("Peak TC Intensity by Sub-basin")
+
+# plt.show()
