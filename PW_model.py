@@ -265,12 +265,17 @@ tc_max = (
 )
 
 # average per yr to create time series
-annual_max = (
+annual_mean_max = (
     tc_max
     .groupby(["sub_basin_name", "year"])["vm"]
-    .max()
+    .mean()
     .reset_index()
 )
+
+print(annual_mean_max)
+
+# save to csv
+annual_mean_max.to_csv("datasets/data_viz/max_wind_speed_annual_mean_maximum_PW.csv")
 
 # # scatter plot
 # plt.figure(figsize=(12,6))
@@ -295,25 +300,25 @@ annual_max = (
 
 # plt.figure(figsize=(10,6))
 
-plt.figure(figsize=(10, 6))
+# plt.figure(figsize=(10, 6))
 
-order = sorted(tc_max["sub_basin_name"].dropna().unique())
+# order = sorted(tc_max["sub_basin_name"].dropna().unique())
 
-sns.boxplot(
-    data=tc_max,
-    x="sub_basin_name",
-    y="vm",
-    order=order
-)
+# sns.boxplot(
+#     data=tc_max,
+#     x="sub_basin_name",
+#     y="vm",
+#     order=order
+# )
 
-plt.xticks(rotation=45, ha="right")
-plt.xlabel("Sub-basin")
-plt.ylabel("Maximum Wind Speed (m/s)")
-plt.title("Distribution of TC Maximum Wind Speed by Sub-basin in North Atlantic")
+# plt.xticks(rotation=45, ha="right")
+# plt.xlabel("Sub-basin")
+# plt.ylabel("Maximum Wind Speed (m/s)")
+# plt.title("Distribution of TC Maximum Wind Speed by Sub-basin in North Atlantic")
 
-plt.savefig('images/data_viz/vmax_PW/max_wind_speed_vm_distribution_max_per_TID.png')
-plt.tight_layout()
-plt.show()
+# plt.savefig('images/data_viz/vmax_PW/max_wind_speed_vm_distribution_max_per_TID.png')
+# plt.tight_layout()
+# plt.show()
 
 #################################################################################################
 

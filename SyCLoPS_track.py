@@ -97,7 +97,7 @@ basins = basins[~basins.geometry.is_empty]
 # read in tc_subbasins_NAtl file
 sub_polygons_dict = {}
 
-with open("tc_subbasins_NAtl_coarse_v6.dat", "r") as f:
+with open("tc_subbasins_NAtl_v5.dat", "r") as f:
     for line in f:
         line = line.strip()
         if not line or line.startswith("#"):
@@ -158,16 +158,21 @@ tc_dissipate['LON'] = ((tc_dissipate['LON'] + 180) % 360) - 180
 
 # make a list of sub basins to plot below
 sb = [
-    'Tropics',
-    'Southeastern Gulf',
-    'Central Atlantic',
-    'Western Seaboard',
+    'Deep Tropics',
+    'Caribbean',
+    'Eastern Tropics',
+    'Southeastern Seaboard',
     'Western Africa',
     'Mediterranean Sea',
     'Mid-latitudinal US/CA',
     'Northeastern Seaboard',
     'Northern Europe',
-    'Arctic'
+    'Arctic',
+    'Gulf (A)',
+    'Gulf (B)',
+    'Central Atlantic',
+    'Subtropical Atlantic',
+    'Mid-latitudinal Atlantic'
 ]
 
 # convert LAT and LON to a new column Points which contains (lon, lat) and convert to a geo data frame so we can filter using polygons
@@ -191,141 +196,174 @@ tc_origin_filtered = gpd.sjoin(
     predicate = "within"
 )
 
-tc_dissipate_filtered = gpd.sjoin(
-    tc_dissipate_points,
-    sub_basins[sub_basins["sub_basin_name"].isin(sb)],
-    how = "inner",
-    predicate = "within"
-)
-
-# print(tc_origin_filtered['sub_basin_name'].unique())
-# print(tc_origin_filtered['sub_basin_name'].unique())
-
-# plot tc dissipate points for North Atlantic
-# Create a figure with a geographic projection
-fig = plt.figure(figsize=(8,6))
-ax = plt.axes(projection=ccrs.PlateCarree()) 
-
-# Plot sub-basins first
-sub_basins.plot(
-    ax=ax,
-    facecolor='none',
-    edgecolor='red',
-    path_effects=[pe.withStroke(linewidth=3, foreground='white')],
-    linewidth=1,
-    transform=ccrs.PlateCarree(),
-    zorder=4
-)
-
-# Scatter the points
-# ax.scatter(
-#     tc_dissipate_filtered['LON'],
-#     tc_dissipate_filtered['LAT'],
-#     c='green',
-#     alpha=0.6,
-#     transform=ccrs.PlateCarree()
+# tc_dissipate_filtered = gpd.sjoin(
+#     tc_dissipate_points,
+#     sub_basins[sub_basins["sub_basin_name"].isin(sb)],
+#     how = "inner",
+#     predicate = "within"
 # )
 
-# find lon/lat min/max for axis bounds
-lon_min = tc_dissipate_filtered['LON'].min()
-lon_max = tc_dissipate_filtered['LON'].max()
-lat_min = tc_dissipate_filtered['LAT'].min()
-lat_max = tc_dissipate_filtered['LAT'].max()
+#print(tc_origin_filtered)
 
+# convert to datetime
+tc_origin_filtered["ISOTIME"] = pd.to_datetime(tc_origin_filtered["ISOTIME"])
 
+# create year column
+tc_origin_filtered["year"] = tc_origin_filtered["ISOTIME"].dt.year
 
-# custom colormap so 0 displays as white on the map
-base_cmap = plt.cm.plasma_r
-cmap_colors = base_cmap(np.linspace(0, 1, 256))
-cmap_colors[0] = [1.0, 1.0, 1.0, 1.0]  # white (RGBA)
-plasma_r_zero_white = colors.ListedColormap(cmap_colors)
+# pivot by year and count of TC origins
+ts = (
+    tc_origin_filtered.groupby(["year", "sub_basin_name"])
+      .size()
+      .unstack(fill_value=0)
+)
 
-# set up 4x4 degree spacing
-lon_edges = np.arange(lon_min, lon_max + 4, 4)
-lat_edges = np.arange(lat_min, lat_max + 4, 4)
+# add total origin nodes per year
+ts["Total"] = ts.sum(axis=1)
 
-# make the TC density plot
-plt.hist2d(tc_dissipate_filtered['LON'], tc_dissipate_filtered['LAT'], bins = [lon_edges, lat_edges], range = [[lon_min, lon_max], [lat_min, lat_max]], cmap = plasma_r_zero_white, transform = ccrs.PlateCarree())
+print(ts.head())
 
+# save to csv
+ts.to_csv("datasets/data_viz/TC+TD_origin_node_count_perSubbasin_SyCLoPS.csv")
 
+# # sub basin toggle
+# sb = "Total"
 
+# plt.figure(figsize=(10,5))
+# plt.plot(ts.index, ts[sb], '-o')
+# plt.xlabel("Year")
+# plt.ylabel("TC Origin Nodes")
+# plt.title(f"Number of TC Origin Nodes in North Atlantic - {sb}")
 
-# Add coastlines
-ax.coastlines(resolution='50m', color='black', linewidth=1)
+# plt.show()
 
-# Set labels and title
-ax.set_xlabel('Longitude')
-ax.set_ylabel('Latitude')
-ax.set_title('Dissipation Node Density of TC + TDs in the North Atlantic (1940-2024)')
+################################################################################################
 
-# round to nearest 10deg
-lon_min_10 = np.floor(lon_min / 10) * 10 
-lon_max_10 = np.ceil(lon_max / 10) * 10   
-lat_min_10 = np.floor(lat_min / 10) * 10
-lat_max_10 = np.ceil(lat_max / 10) * 10
+# # plot tc dissipate points for North Atlantic
+# # Create a figure with a geographic projection
+# fig = plt.figure(figsize=(8,6))
+# ax = plt.axes(projection=ccrs.PlateCarree()) 
 
+# # Plot sub-basins first
+# sub_basins.plot(
+#     ax=ax,
+#     facecolor='none',
+#     edgecolor='red',
+#     path_effects=[pe.withStroke(linewidth=3, foreground='white')],
+#     linewidth=1,
+#     transform=ccrs.PlateCarree(),
+#     zorder=4
+# )
 
-# CHECK
-#print(lon_min, lon_max)
-#print(type(lon_min_10), type(lon_max_10))
+# # Scatter the points
+# # ax.scatter(
+# #     tc_dissipate_filtered['LON'],
+# #     tc_dissipate_filtered['LAT'],
+# #     c='green',
+# #     alpha=0.6,
+# #     transform=ccrs.PlateCarree()
+# # )
 
+# # find lon/lat min/max for axis bounds
+# lon_min = tc_origin_filtered['LON'].min()
+# lon_max = tc_origin_filtered['LON'].max()
+# lat_min = tc_origin_filtered['LAT'].min()
+# lat_max = tc_origin_filtered['LAT'].max()
 
-# add sub-basin labels
-for idx, row in sub_basins.iterrows():
-    point = row.geometry.centroid
-    name = row["sub_basin_name"]
+# # custom colormap so 0 displays as white on the map
+# base_cmap = plt.cm.plasma_r
+# cmap_colors = base_cmap(np.linspace(0, 1, 256))
+# cmap_colors[0] = [1.0, 1.0, 1.0, 1.0]  # white (RGBA)
+# plasma_r_zero_white = colors.ListedColormap(cmap_colors)
 
-    # wrap text (adjust width as needed)
-    name_wrapped = "\n".join(textwrap.wrap(name, width=10, break_long_words=False, break_on_hyphens=False))
+# # set up 4x4 degree spacing
+# lon_edges = np.arange(lon_min, lon_max + 4, 4)
+# lat_edges = np.arange(lat_min, lat_max + 4, 4)
+
+# # make the TC density plot
+# counts, xedges, yedges, im = ax.hist2d(
+#     tc_origin_filtered['LON'],
+#     tc_origin_filtered['LAT'],
+#     bins=[lon_edges, lat_edges],
+#     range=[[lon_min, lon_max], [lat_min, lat_max]],
+#     cmap=plasma_r_zero_white
+# )
+
+# # add color bar
+# cbar = fig.colorbar(
+#     im,
+#     ax=ax,
+#     orientation='horizontal',
+#     pad=0.15,      
+#     fraction=0.05, 
+#     aspect=40      
+# )
+# cbar.set_label('TC Count')
+
+# # Add coastlines
+# ax.coastlines(resolution='50m', color='black', linewidth=1)
+
+# # Set labels and title
+# ax.set_xlabel('Longitude')
+# ax.set_ylabel('Latitude')
+# ax.set_title('Origin Node Density of TCs in the North Atlantic (1940-2024)')
+
+# # round to nearest 10deg
+# lon_min_10 = np.floor(lon_min / 10) * 10 
+# lon_max_10 = np.ceil(lon_max / 10) * 10   
+# lat_min_10 = np.floor(lat_min / 10) * 10
+# lat_max_10 = np.ceil(lat_max / 10) * 10
+
+# # CHECK
+# #print(lon_min, lon_max)
+# #print(type(lon_min_10), type(lon_max_10))
+
+# # add sub-basin labels
+# for idx, row in sub_basins.iterrows():
+#     point = row.geometry.centroid
+#     name = row["sub_basin_name"]
+
+#     # wrap text (adjust width as needed)
+#     name_wrapped = "\n".join(textwrap.wrap(name, width=10, break_long_words=False, break_on_hyphens=False))
     
-    # move Arctic label downward
-    if name == "Arctic":
-        point = Point(point.x, point.y - 15)
-        #continue
+#     # move Arctic label downward
+#     if name == "Arctic":
+#         point = Point(point.x, point.y - 15)
+#         #continue
 
-    # Northern Europe label down a bit
-    elif name == "Northern Europe":
-        point = Point(point.x, point.y - 5)
-        #continue
+#     # Northern Europe label down a bit
+#     elif name == "Northern Europe":
+#         point = Point(point.x, point.y - 5)
+#         #continue
 
-    txt = ax.text(
-        point.x,
-        point.y,
-        name_wrapped,
-        transform=ccrs.PlateCarree(),
-        fontsize=7,
-        weight='bold',
-        ha='center',
-        va='center',
-        color='black',
-        zorder=10
-    )
+#     txt = ax.text(
+#         point.x,
+#         point.y,
+#         name_wrapped,
+#         transform=ccrs.PlateCarree(),
+#         fontsize=7,
+#         weight='bold',
+#         ha='center',
+#         va='center',
+#         color='black',
+#         zorder=10
+#     )
 
-    txt.set_path_effects([
-        pe.withStroke(linewidth=3, foreground="white")
-    ])
+#     txt.set_path_effects([
+#         pe.withStroke(linewidth=3, foreground="white")
+#     ])      
 
-        
+# # Set tick marks every 10 degrees
+# ax.set_xticks(np.arange(lon_min_10, lon_max_10, 10), crs=ccrs.PlateCarree())
+# ax.set_yticks(np.arange(lat_min_10, lat_max_10, 10), crs=ccrs.PlateCarree())
+# ax.set_extent([lon_min_10, lon_max_10, lat_min_10, lat_max_10],crs=ccrs.PlateCarree())
 
-# Set tick marks every 10 degrees
-ax.set_xticks(np.arange(lon_min_10, lon_max_10, 10), crs=ccrs.PlateCarree())
-ax.set_yticks(np.arange(lat_min_10, lat_max_10, 10), crs=ccrs.PlateCarree())
-
-ax.set_extent([lon_min_10, lon_max_10, lat_min_10, lat_max_10],crs=ccrs.PlateCarree())
-
-plt.savefig(r"images/data_viz/TC_diss/TC+TD/TC+TD_diss_density_Total_coarse.png")
-plt.show()
-
-
-
-
-
+# #plt.savefig(r"images/data_viz/TC_diss/TC+TD/TC+TD_diss_density_Total_coarse.png")
+# #plt.show()
 
 ################################################################################################
 
 # # get a pivot table of count/share of TCs that origin and dissipate by sub basin
-
-
 
 # # merge start and end nodes on TID
 # tc_track = (
@@ -386,21 +424,6 @@ plt.show()
 
 # # save table
 # tc_track.to_csv("datasets/SyCLoPS/tc_track_subbasin_table_withYear.csv", index = False)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 # #######################################################################
 

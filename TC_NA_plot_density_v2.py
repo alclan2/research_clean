@@ -17,8 +17,8 @@ dfc = pd.read_parquet(ClassifiedData)
 
 # select TC and TD LPS nodes and filter QS out of Track_Info
 #dfc_sub = dfc[((dfc.Short_Label=='TC') | (dfc.Short_Label=='TD')) & ~(dfc['Track_Info'].str.contains('QS', case=False, na=False))]
-dfc_sub = dfc[(dfc.Tropical_Flag==1) & ((dfc.Adjusted_Label=='TC') | (dfc.Adjusted_Label=='TD')) & ~(dfc['Track_Info'].str.contains('QS', case=False, na=False))]
-#dfc_sub = dfc[(dfc.Tropical_Flag==1) & (dfc.Adjusted_Label=='TC') & ~(dfc['Track_Info'].str.contains('QS', case=False, na=False))]
+#dfc_sub = dfc[(dfc.Tropical_Flag==1) & ((dfc.Adjusted_Label=='TC') | (dfc.Adjusted_Label=='TD')) & ~(dfc['Track_Info'].str.contains('QS', case=False, na=False))]
+dfc_sub = dfc[(dfc.Tropical_Flag==1) & (dfc.Adjusted_Label=='TC') & ~(dfc['Track_Info'].str.contains('QS', case=False, na=False))]
 
 # read in tc basins file and filter the N Atlantic points only
 polygons_dict = {}
@@ -121,7 +121,7 @@ ax.set_extent([lon_min, lon_max, lat_min, lat_max], crs = ccrs.PlateCarree())
 # read in NAtl subbasin polygons
 sub_polygons_dict = {}
 
-with open("tc_subbasins_NAtl_coarse_v6.dat", "r") as f:
+with open("tc_subbasins_NAtl_v5.dat", "r") as f:
     for line in f:
         line = line.strip()
         if not line or line.startswith("#"):
