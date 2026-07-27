@@ -11,50 +11,51 @@ import matplotlib.patheffects as pe
 import textwrap
 import matplotlib.colors as colors
 import seaborn as sns
+from textwrap import fill
 
 # read in subbasin table with starting and ending nodes
-ds = pd.read_csv(r"datasets/SyCLoPS/tc_track_subbasin_coarse_table.csv")
+ds = pd.read_csv(r"datasets/SyCLoPS/tc_track_subbasin_table.csv")
 #print(ds.head())
 
-# find fraction of TCs that originate or dissipate per subbasin
-sb_start = ds.groupby('sub_basin_start').size()
-sb_end = ds.groupby('sub_basin_end').size()
+# # find fraction of TCs that originate or dissipate per subbasin
+# sb_start = ds.groupby('sub_basin_start').size()
+# sb_end = ds.groupby('sub_basin_end').size()
 
-sb_start_frac = sb_start / sb_start.sum()
-sb_end_frac = sb_end / sb_end.sum()
+# sb_start_frac = sb_start / sb_start.sum()
+# sb_end_frac = sb_end / sb_end.sum()
 
-# plot fractions
-tc_origin = (
-    ds['sub_basin_start']
-    .value_counts(normalize=True)
-    .mul(100)
-    .sort_values()
-)
+# # plot fractions
+# tc_origin = (
+#     ds['sub_basin_start']
+#     .value_counts(normalize=True)
+#     .mul(100)
+#     .sort_values()
+# )
 
-tc_dissipate = (
-    ds['sub_basin_end']
-    .value_counts(normalize=True)
-    .mul(100)
-    .sort_values()
-)
+# tc_dissipate = (
+#     ds['sub_basin_end']
+#     .value_counts(normalize=True)
+#     .mul(100)
+#     .sort_values()
+# )
 
-#print(tc_origin)
-#print(tc_dissipate)
+# # print(tc_origin)
+# # print(tc_dissipate)
 
-# combine origin and dissipate
-orig_to_diss = pd.concat(
-    [tc_origin, tc_dissipate],
-    axis=1
-)
+# # combine origin and dissipate
+# orig_to_diss = pd.concat(
+#     [tc_origin, tc_dissipate],
+#     axis=1
+# )
 
-orig_to_diss.columns = ['Origin', 'Dissipation']
-orig_to_diss = orig_to_diss.fillna(0)
+# orig_to_diss.columns = ['Origin', 'Dissipation']
+# orig_to_diss = orig_to_diss.fillna(0)
 
-orig_to_diss = orig_to_diss.sort_values('Origin', ascending=False)
+# orig_to_diss = orig_to_diss.sort_values('Origin', ascending=False)
 
-#print(orig_to_diss)
-#print(orig_to_diss['Origin'].sum())
-#print(orig_to_diss['Dissipation'].sum())
+# print(orig_to_diss)
+# print(orig_to_diss['Origin'].sum())
+# print(orig_to_diss['Dissipation'].sum())
 
 ## plot
 #ax = orig_to_diss.plot(
@@ -88,21 +89,20 @@ orig_to_diss = orig_to_diss.sort_values('Origin', ascending=False)
 pivot = pd.pivot_table(
    ds,
     values="TID",
-    index="sub_basin_start",
-    columns="sub_basin_end",
+    index="sub_basin_end",
+    columns="sub_basin_start",
     aggfunc="count",
     fill_value=0
 )
-tracks = pivot.div(pivot.sum(axis=1), axis=0).mul(100).round(0)
+tracks = pivot.div(pivot.sum(axis=1), axis=0).mul(100)
 
-#print(pivot)
-
-# remove land regions
-tracks = tracks.drop(['Mid-latitudinal US/CA', 'Western Africa'])
+# add total column
+# tracks["Total"] = tracks.sum(axis=1)
+# print(tracks["Total"])
 
 # add line breaks for plotting ease
-tracks_wrapped = pivot.copy()
-tracks_wrapped.columns = tracks_wrapped.columns.str.replace(" ", "\n")
+tracks_wrapped = tracks.copy()
+tracks_wrapped.index = [fill(x, width=12) for x in tracks.index]
 
 ## plot as heatmap
 #plt.figure(figsize=(14, 8))
@@ -127,28 +127,32 @@ tracks_wrapped.columns = tracks_wrapped.columns.str.replace(" ", "\n")
 ##################################################################################
 
 # stacked bar chart
-cmap = plt.cm.tab20
-colors = cmap(np.linspace(0.4, 0.9, tracks.shape[1]))
+colors = [
+    "#4E79A7",  # blue
+    "#F28E2B",  # orange
+    "#E15759",  # red
+    "#76B7B2",  # teal
+    "#59A14F",  # green
+    "#EDC948",  # yellow
+    "#B07AA1",  # purple
+    "#FF9DA7",  # pink
+    "#9C755F",  # brown
+    "#BAB0AC",  # gray
+]
 
-#colors = sns.color_palette("Set2", n_colors=tracks.shape[1])
-
-ax = tracks.plot(
+ax = tracks_wrapped.plot(
     kind="bar",
     stacked=True,
-    figsize=(12, 6),
+    figsize=(14, 6),
     color=colors
 )
 
-ax.set_ylabel("%")
-ax.set_xlabel("Origin Sub-Basin")
-ax.set_title("TC Dissipation Sub-Basin by Origin Location")
+ax.set_ylabel("Fraction of TCs (%)")
+ax.set_xlabel("Dissipation Sub-Basin", labelpad = 2.0)
+ax.set_title("TC Genesis Location vs. Dissipation Sub-Basin")
 
-plt.legend(title="Dissipation Sub-Basin", bbox_to_anchor=(1.05, 1))
+plt.legend(title="Origin Sub-Basin", bbox_to_anchor=(1.05, 1))
 plt.xticks(rotation=45)
 plt.tight_layout()
-#plt.savefig("images/data_viz/tc_track_sb_coarse_fraction_stacked.png")
+plt.savefig("images/data_viz/tc_track_sb_fraction_stacked_v2.png")
 plt.show()
-
-
-#print(tracks.head())
-

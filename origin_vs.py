@@ -29,11 +29,11 @@ shear = (
 #print(shear)
 
 # filter origins and shear to the same time period
-origins = ds1[ds1["year"] >= 1979]
+# ds1 = ds1[ds1["year"] >= 1940]
 shear = shear[shear["year"] <= 2024]
 
 # index by year
-origins = origins.set_index("year")
+origins = ds1.set_index("year")
 shear = shear.set_index("year")
 
 # # match on sub basins
@@ -57,10 +57,7 @@ shear = shear.set_index("year")
 
 # origin node count vs. max mean wind speed correlation
 # load max mean wind speed
-ds3 = pd.read_csv("datasets/data_viz/max_wind_speed_annual_mean_maximum_PW.csv")
-
-# print(ds1.head())
-# print(ds2.head())
+ds3 = pd.read_csv("datasets/data_viz/max_wind_speed_annual_mean_allTimeSteps_PW.csv")
 
 # pivot max wind to match origins file format
 vm = (
@@ -72,7 +69,6 @@ vm = (
 # print(vm)
 
 # index by year
-origins = ds1.set_index("year")
 vm = vm.set_index("year")
 
 # # match on sub basins
@@ -100,9 +96,20 @@ sst = pd.read_csv("datasets/COBE2 SST/post-processing/sst_anom_moving_window_byS
 # filter to 1979-2024 since that is when we have wind shear & origin data
 sst = sst[sst["year"] >= 1940]
 
+# trim columns
 sst = sst[["year", "sub_basin_name", "mean_anom"]]
 
-#print(sst)
+# load RH 600hPa 
+rh = pd.read_csv("datasets/data_viz/RH_600hPa_yearly_mean_perSubbasin.csv")
+
+# load lifespan annual mean file
+ls = pd.read_csv("datasets/data_viz/lifespan_annual_mean_per_origin_subbasin.csv")
+
+# trim ls columns
+ls = ls[['year', 'sub_basin_origin', 'mean_lifespan_days']]
+
+# rename ls column to match origins
+ls = ls.rename(columns={"sub_basin_origin": "sub_basin_name"})
 
 # drop total column from origins
 origins = origins.drop(columns=["Total"])
@@ -138,9 +145,24 @@ vm_long = (
     )
 )
 
+rh_long = (
+    rh
+    .reset_index(drop=True)
+    .melt(
+        id_vars="year",
+        var_name="sub_basin_name",
+        value_name="rh600"
+    )
+)
+
 # merge on year and sub basin
 merged = (
     origins_long
+    .merge(
+        ls,
+        on=["year", "sub_basin_name"],
+        how="outer"
+    )
     .merge(
         shear_long,
         on=["year", "sub_basin_name"],
@@ -156,7 +178,14 @@ merged = (
         on=["year", "sub_basin_name"],
         how="outer"
     )
+    .merge(
+            rh_long,
+            on=["year", "sub_basin_name"],
+            how="outer"
+        )
 )
+
+#print(merged)
 
 # drop sub basins with very few/no origin nodes
 drop_basins = ["Arctic", "Northern Europe", "Deep Tropics", "Mediterranean Sea", "Mid-latitudinal Atlantic", "Mid-latitudinal US/CA", "Subtropical Atlantic", "Western Africa"]
@@ -165,16 +194,42 @@ merged_filt = merged[
     ~merged["sub_basin_name"].isin(drop_basins)
 ]
 
+# filter to time
+merged_filt = merged_filt[(merged_filt["year"] >= 1940) & (merged_filt["year"] <= 2024)]
+
 #print(merged_filt)
 
-# filter to time
-merged_filt = merged_filt[(merged_filt["year"] >= 1940) & (merged_filt["year"] <= 2014)]
+# select variables for plot
+plot_df = merged_filt.dropna(subset=["mean_lifespan_days", "vm"])
 
-plot_df = merged_filt.dropna(subset=["origins", "mean_anom"])
+# calc correlation to add to plots
+from scipy.stats import pearsonr
+def add_corr(data, **kwargs):
+    r, p = pearsonr(data["vm"], data["mean_lifespan_days"])
+    ax = plt.gca()
+    
+    ax.text(
+        0.05, 0.90,
+        f"r = {r:.2f}",
+        transform=ax.transAxes,
+        fontsize=10,
+        bbox=dict(
+            boxstyle="round,pad=0.3",
+            facecolor="white",
+            edgecolor="black",
+            alpha=0.8
+        )
+    )
+
+#print(plot_df)
+
+# plot
+col_order = sorted(plot_df["sub_basin_name"].unique())
 
 g = sns.FacetGrid(
     plot_df,
     col="sub_basin_name",
+    col_order=col_order,
     col_wrap=4,
     height=3,
     aspect=1.2,
@@ -184,9 +239,12 @@ g = sns.FacetGrid(
 
 g.map_dataframe(
     sns.scatterplot,
-    x="mean_anom",
-    y="origins"
+    x="vm",
+    y="mean_lifespan_days",
+    color="green" 
 )
+
+g.map_dataframe(add_corr)
 
 g.set_titles("{col_name}")
 
@@ -200,12 +258,12 @@ for ax in g.axes.flat:
     ax.tick_params(axis="y", labelleft=True)
 
 # Add one common label for the whole figure
-g.figure.supxlabel("SST Anom (°C)", y=0.02)
-g.figure.supylabel("Number of Origin Locations", x=0.02)
+g.figure.supxlabel("Mean Maximum Wind Speed (m/s)", y=0.02)
+g.figure.supylabel("Mean Lifespan (days)", x=0.02)
 
 # add title
 g.figure.suptitle(
-    "TC Origin Locations vs. SST Anomaly by Sub-basin",
+    "TC Lifespan vs. Maximum Wind Speed by Sub-basin",
     fontsize=16,
     y=0.98
 )
@@ -219,5 +277,5 @@ g.figure.subplots_adjust(
     top=0.85
 )
 
-plt.savefig("images/data_viz/TC_origin_nodes_vs_sst_moving_window_anom_perSubbasin.png")
+plt.savefig("images/data_viz/origin_vs/TC_mean_lifespan_vs_max_wind_vm_allTimeSteps_perSubbasin_withCorrelation.png")
 plt.show()

@@ -132,7 +132,7 @@ sub_basins["geometry"] = sub_basins["geometry"].apply(shift_lon)
 #     preprocess=lambda ds: ds.drop_vars("time_bnds", errors="ignore"),
 # )
 
-# # print(ds)
+# #print(ds)
 
 # # select the RHUM variable
 # rhum = ds["rhum"]
@@ -142,28 +142,28 @@ sub_basins["geometry"] = sub_basins["geometry"].apply(shift_lon)
 #     lon=(((rhum.lon + 180) % 360) - 180)
 # ).sortby("lon")
 
-# # filter to relative humidity at the 400 level only
-# rhum400 = rhum.sel(level=400)
+# # filter to relative humidity to a specific pressure level only
+# rhum600 = rhum.sel(level=600)
 
 # # roll up to monthly means
-# rhum400_monthly = rhum400.resample(time="MS").mean()
+# rhum600_monthly = rhum600.resample(time="MS").mean()
 
 # # add CRS and spatial dims
-# rhum400_monthly = rhum400_monthly.rio.write_crs("EPSG:4326")
-# rhum400_monthly = rhum400_monthly.rio.set_spatial_dims(x_dim="lon", y_dim="lat")
+# rhum600_monthly = rhum600_monthly.rio.write_crs("EPSG:4326")
+# rhum600_monthly = rhum600_monthly.rio.set_spatial_dims(x_dim="lon", y_dim="lat")
 
 # # filter to N Atlantic basin
 # region = basins[basins["basin name"] == "N Atlantic"]
 
 # # filter to hurricane season
-# rhum400_full = (
-#     rhum400_monthly
-#     .where(rhum400_monthly.time.dt.month.isin([6, 7, 8, 9, 10]), drop=True)
+# rhum600_full = (
+#     rhum600_monthly
+#     .where(rhum600_monthly.time.dt.month.isin([6, 7, 8, 9, 10]), drop=True)
 #     .rio.clip(region.geometry, region.crs, drop=True)
 # )
 
-# save monthly RH means to dataset (NOT ANOM)
-#rhum400_full.to_netcdf("datasets/RHUM/post-processing/RHUM400_mon_mean_1979-2025.nc")
+# # save monthly RH means to dataset (NOT ANOM)
+# rhum600_full.to_netcdf("datasets/RHUM/post-processing/RHUM600_mon_mean_1979-2025.nc")
 
 # ######################################################################################
 
@@ -317,9 +317,11 @@ sub_basins["geometry"] = sub_basins["geometry"].apply(shift_lon)
 # timeseries of RH anom per sub basin
 
 # read in MSLP anom dataset
-ds = xr.open_dataset(r"datasets/RHUM/post-processing/RHUM400_mon_mean_1979-2025.nc")
+ds = xr.open_dataset(r"datasets/RHUM/post-processing/RHUM600_mon_mean_1979-2025.nc")
 
 rh = ds['rhum']
+
+#print(rh)
 
 # convert to dataframe
 df = rh.to_dataframe().reset_index()
@@ -333,6 +335,8 @@ df_points = gpd.GeoDataFrame(
 
 # convert lon to -180-180 from 0-360
 df_points['lon'] = ((df_points['lon'] + 180) % 360) - 180
+
+#print(df_points.head())
 
 # filter points to North Atlantic
 df_filtered = gpd.sjoin(
@@ -365,7 +369,7 @@ df_join = gpd.sjoin(
     predicate='within'
 )
 
-#print(df_join)
+print(df_join)
 
 # calc annual mean of rh anomaly per sub basin
 yearly_rh = (
@@ -379,35 +383,38 @@ yearly_rh = (
     )
 )
 
-#print(yearly_rh)
+print(yearly_rh)
 
-# scatter plot per sub basin
-# filter to sub basin
-sb = 'Arctic'
+# save as csv
+yearly_rh.to_csv("datasets/data_viz/RH_600hPa_yearly_mean_perSubbasin.csv")
 
-plt.figure(figsize=(10, 5))
+# # scatter plot per sub basin
+# # filter to sub basin
+# sb = 'Arctic'
 
-x = yearly_rh.index
-y = yearly_rh[sb]
+# plt.figure(figsize=(10, 5))
 
-plt.plot(
-    x,
-    y,
-    marker="o",      
-    linestyle="-",   
-    color="blue"
-)
+# x = yearly_rh.index
+# y = yearly_rh[sb]
 
-# plt.axhline(
-#     y=0,
-#     color="gray",
-#     linestyle="--",
-#     linewidth=1
+# plt.plot(
+#     x,
+#     y,
+#     marker="o",      
+#     linestyle="-",   
+#     color="blue"
 # )
 
-plt.title(f'Mean Relative Humidity in North Atlantic - {sb}')
-plt.xlabel('Year')
-plt.ylabel('RH (%)')
+# # plt.axhline(
+# #     y=0,
+# #     color="gray",
+# #     linestyle="--",
+# #     linewidth=1
+# # )
 
-plt.savefig(f'images/data_viz/RHUM400/rhum400_mon_mean_timeseries_{sb}.png')
-plt.show()
+# plt.title(f'Mean Relative Humidity in North Atlantic - {sb}')
+# plt.xlabel('Year')
+# plt.ylabel('RH (%)')
+
+# #plt.savefig(f'images/data_viz/RHUM400/rhum400_mon_mean_timeseries_{sb}.png')
+# plt.show()

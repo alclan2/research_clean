@@ -257,25 +257,32 @@ tc_sb['year'] = tc['ISOTIME'].dt.year
 
 # tc_sb_filt = tc_sb[tc_sb['sub_basin_name'] == sb]
 
-# find the max vm per TID
-tc_max = (
-    tc_sb.groupby(["TID", "sub_basin_name", "year"])["vm"]
-    .max()
-    .reset_index()
-)
+# # find the max vm per TID
+# tc_max = (
+#     tc_sb.groupby(["TID", "sub_basin_name", "year"])["vm"]
+#     .max()
+#     .reset_index()
+# )
 
-# average per yr to create time series
-annual_mean_max = (
-    tc_max
-    .groupby(["sub_basin_name", "year"])["vm"]
+# # average per yr to create time series
+# annual_mean_max = (
+#     tc_max
+#     .groupby(["sub_basin_name", "year"])["vm"]
+#     .mean()
+#     .reset_index()
+# )
+
+# instead of max per TID, average across all time steps
+tc_mean = (
+    tc_sb.groupby(["sub_basin_name", "year"])["vm"]
     .mean()
     .reset_index()
 )
 
-print(annual_mean_max)
+print(tc_mean)
 
 # save to csv
-annual_mean_max.to_csv("datasets/data_viz/max_wind_speed_annual_mean_maximum_PW.csv")
+#tc_mean.to_csv("datasets/data_viz/max_wind_speed_annual_mean_allTimeSteps_PW.csv")
 
 # # scatter plot
 # plt.figure(figsize=(12,6))

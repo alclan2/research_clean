@@ -244,9 +244,26 @@ diss_join = gpd.sjoin(
 lifespan["sub_basin_origin"] = origin_join["sub_basin_name"].values
 lifespan["sub_basin_diss"] = diss_join["sub_basin_name"].values
 
-#print(lifespan.columns)
+# create year column
+lifespan['year'] = lifespan['origin_time'].dt.year
+
+print(lifespan)
+
+# # calc yearly mean lifespan per origin sub basin
+# yearly_mean_ls = (
+#     lifespan.groupby(['year', 'sub_basin_origin'])['lifespan_days']
+#       .mean()
+#       .reset_index(name='mean_lifespan_days')
+# )
+
+# print(yearly_mean_ls)
+
+# save as csv
+#yearly_mean_ls.to_csv("datasets/data_viz/lifespan_annual_mean_per_origin_subbasin.csv")
 
 ############################################################################################################
+
+#print(lifespan)
 
 # # calc avg life span per sub basin
 # avg_lifespan = (
@@ -255,6 +272,8 @@ lifespan["sub_basin_diss"] = diss_join["sub_basin_name"].values
 #     .mean()
 #     .rename(columns={"lifespan_days": "mean_lifespan_days"})
 # )
+
+# print(avg_lifespan)
 
 # # order longest to shortest
 # avg_lifespan = avg_lifespan.sort_values(
@@ -282,64 +301,64 @@ lifespan["sub_basin_diss"] = diss_join["sub_basin_name"].values
 
 ############################################################################################################
 
-# scatter plot of lifespan vs. WS/MSLP
+# # scatter plot of lifespan vs. WS/MSLP
 
-# filter to sub basin
-sb = 'Mid-latitudinal Atlantic'
+# # filter to sub basin
+# sb = 'Mid-latitudinal Atlantic'
 
-lifespan_sb = lifespan[lifespan["sub_basin_origin"] == sb]
+# lifespan_sb = lifespan[lifespan["sub_basin_origin"] == sb]
 
-# create custom color bar bins
-bins = [0, 2, 5, 8, 11, np.inf]
-labels = ["≤2", "3-5", "6-8", "9-11", "≥12"]
+# # create custom color bar bins
+# bins = [0, 2, 5, 8, 11, np.inf]
+# labels = ["≤2", "3-5", "6-8", "9-11", "≥12"]
 
-lifespan_sb["lifespan_bin"] = pd.cut(
-    lifespan_sb["lifespan_days"],
-    bins=bins,
-    labels=labels,
-    include_lowest=True
-)
+# lifespan_sb["lifespan_bin"] = pd.cut(
+#     lifespan_sb["lifespan_days"],
+#     bins=bins,
+#     labels=labels,
+#     include_lowest=True
+# )
 
-# # get 5 evenly spaced colors from the viridis colormap
-# viridis = [tuple(c) for c in plt.cm.viridis(np.linspace(0, 1, len(labels)))]
+# # # get 5 evenly spaced colors from the viridis colormap
+# # viridis = [tuple(c) for c in plt.cm.viridis(np.linspace(0, 1, len(labels)))]
 
-# create a dictionary mapping each label to a color
-colors_list = plt.cm.tab10(np.linspace(0, 1, len(labels)))
-colors = dict(zip(labels, colors_list))
+# # create a dictionary mapping each label to a color
+# colors_list = plt.cm.tab10(np.linspace(0, 1, len(labels)))
+# colors = dict(zip(labels, colors_list))
 
-# map each point to its color
-point_colors = [colors[x] for x in lifespan_sb["lifespan_bin"]]
+# # map each point to its color
+# point_colors = [colors[x] for x in lifespan_sb["lifespan_bin"]]
 
-# plot the scatter plot
-plt.figure(figsize=(10, 5))
+# # plot the scatter plot
+# plt.figure(figsize=(10, 5))
 
-plt.scatter(
-    lifespan_sb["WS_origin"],
-    lifespan_sb["WS_diss"],
-    c=point_colors,
-    s=50
-)
+# plt.scatter(
+#     lifespan_sb["WS_origin"],
+#     lifespan_sb["WS_diss"],
+#     c=point_colors,
+#     s=50
+# )
 
-plt.xlabel("WS at Origin (m/s)")
-plt.ylabel("WS at Dissipation (m/s)")
-plt.title(f"TC Wind Speed at Origin vs. Dissipation - {sb}")
+# plt.xlabel("WS at Origin (m/s)")
+# plt.ylabel("WS at Dissipation (m/s)")
+# plt.title(f"TC Wind Speed at Origin vs. Dissipation - {sb}")
 
-legend_elements = [
-    Line2D([0], [0], marker='o', color='w',
-           label=label,
-           markerfacecolor=color,
-           markersize=8)
-    for label, color in colors.items()
-]
+# legend_elements = [
+#     Line2D([0], [0], marker='o', color='w',
+#            label=label,
+#            markerfacecolor=color,
+#            markersize=8)
+#     for label, color in colors.items()
+# ]
 
-plt.legend(handles=legend_elements, title="Lifespan (days)")
+# plt.legend(handles=legend_elements, title="Lifespan (days)")
 
-plt.xticks(rotation=45, ha="right")
-plt.tight_layout()
+# plt.xticks(rotation=45, ha="right")
+# plt.tight_layout()
 
-plt.savefig(f"images/data_viz/WS/WS_origin_vs_diss_withLifespan_{sb}.png")
+# plt.savefig(f"images/data_viz/WS/WS_origin_vs_diss_withLifespan_{sb}.png")
 
-plt.show()
+# plt.show()
 
 ############################################################################################################
 

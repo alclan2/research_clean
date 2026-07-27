@@ -20,8 +20,8 @@ df = pd.read_parquet(ClassifiedData)
 #print(df['Adjusted_Label'].unique())
 
 # TC Nodes:
-dftc_node = df[(df.Tropical_Flag==1) & ((df.Adjusted_Label=='TC') | (df.Adjusted_Label=='TD')) & ~(df['Track_Info'].str.contains('QS', case=False, na=False))]
-#dftc_node = df[(df.Tropical_Flag==1) & (df.Adjusted_Label=='TC') & ~(df['Track_Info'].str.contains('QS', case=False, na=False))]
+#dftc_node = df[(df.Tropical_Flag==1) & ((df.Adjusted_Label=='TC') | (df.Adjusted_Label=='TD')) & ~(df['Track_Info'].str.contains('QS', case=False, na=False))]
+dftc_node = df[(df.Tropical_Flag==1) & (df.Adjusted_Label=='TC') & ~(df['Track_Info'].str.contains('QS', case=False, na=False))]
 
 #print(dftc_node['Adjusted_Label'].unique())
 
@@ -211,6 +211,8 @@ tc_origin_filtered["ISOTIME"] = pd.to_datetime(tc_origin_filtered["ISOTIME"])
 # create year column
 tc_origin_filtered["year"] = tc_origin_filtered["ISOTIME"].dt.year
 
+# print(tc_origin_filtered)
+
 # pivot by year and count of TC origins
 ts = (
     tc_origin_filtered.groupby(["year", "sub_basin_name"])
@@ -221,10 +223,10 @@ ts = (
 # add total origin nodes per year
 ts["Total"] = ts.sum(axis=1)
 
-print(ts.head())
+# print(ts.head())
 
 # save to csv
-ts.to_csv("datasets/data_viz/TC+TD_origin_node_count_perSubbasin_SyCLoPS.csv")
+#ts.to_csv("datasets/data_viz/TC+TD_origin_node_count_perSubbasin_SyCLoPS.csv")
 
 # # sub basin toggle
 # sb = "Total"
