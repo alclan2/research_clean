@@ -162,6 +162,8 @@ sub_basins["geometry"] = sub_basins["geometry"].apply(shift_lon)
 #     .rio.clip(region.geometry, region.crs, drop=True)
 # )
 
+# print(rhum600_full.head())
+
 # # save monthly RH means to dataset (NOT ANOM)
 # rhum600_full.to_netcdf("datasets/RHUM/post-processing/RHUM600_mon_mean_1979-2025.nc")
 
@@ -321,7 +323,7 @@ ds = xr.open_dataset(r"datasets/RHUM/post-processing/RHUM600_mon_mean_1979-2025.
 
 rh = ds['rhum']
 
-#print(rh)
+# print(rh)
 
 # convert to dataframe
 df = rh.to_dataframe().reset_index()
@@ -336,7 +338,7 @@ df_points = gpd.GeoDataFrame(
 # convert lon to -180-180 from 0-360
 df_points['lon'] = ((df_points['lon'] + 180) % 360) - 180
 
-#print(df_points.head())
+# print(df_points.head())
 
 # filter points to North Atlantic
 df_filtered = gpd.sjoin(
@@ -369,52 +371,62 @@ df_join = gpd.sjoin(
     predicate='within'
 )
 
-print(df_join)
+# print(df_join)
 
-# calc annual mean of rh anomaly per sub basin
-yearly_rh = (
-    df_join
-    .dropna(subset=["sub_basin_name"])
-    .pivot_table(
-        index="year",
-        columns="sub_basin_name",
-        values="rhum",
-        aggfunc="mean"
-    )
-)
+# filter out sub basins outside the atlantic
+df_join = df_join.dropna(subset=['sub_basin_name'])
 
-print(yearly_rh)
+df_join = df_join[['time', 'lat', 'lon', 'rhum', 'year', 'sub_basin_name']]
 
-# save as csv
-yearly_rh.to_csv("datasets/data_viz/RH_600hPa_yearly_mean_perSubbasin.csv")
+# print(df_join)
 
-# # scatter plot per sub basin
-# # filter to sub basin
-# sb = 'Arctic'
+# # save to csv
+# df_join.to_csv("datasets/data_viz/rh600_spatial_map.csv")
 
-# plt.figure(figsize=(10, 5))
-
-# x = yearly_rh.index
-# y = yearly_rh[sb]
-
-# plt.plot(
-#     x,
-#     y,
-#     marker="o",      
-#     linestyle="-",   
-#     color="blue"
+# # calc annual mean of rh anomaly per sub basin
+# yearly_rh = (
+#     df_join
+#     .dropna(subset=["sub_basin_name"])
+#     .pivot_table(
+#         index="year",
+#         columns="sub_basin_name",
+#         values="rhum",
+#         aggfunc="mean"
+#     )
 # )
 
-# # plt.axhline(
-# #     y=0,
-# #     color="gray",
-# #     linestyle="--",
-# #     linewidth=1
+# print(yearly_rh)
+
+# # save as csv
+# yearly_rh.to_csv("datasets/data_viz/RH_600hPa_yearly_mean_perSubbasin.csv")
+
+# # # scatter plot per sub basin
+# # # filter to sub basin
+# # sb = 'Arctic'
+
+# # plt.figure(figsize=(10, 5))
+
+# # x = yearly_rh.index
+# # y = yearly_rh[sb]
+
+# # plt.plot(
+# #     x,
+# #     y,
+# #     marker="o",      
+# #     linestyle="-",   
+# #     color="blue"
 # # )
 
-# plt.title(f'Mean Relative Humidity in North Atlantic - {sb}')
-# plt.xlabel('Year')
-# plt.ylabel('RH (%)')
+# # # plt.axhline(
+# # #     y=0,
+# # #     color="gray",
+# # #     linestyle="--",
+# # #     linewidth=1
+# # # )
 
-# #plt.savefig(f'images/data_viz/RHUM400/rhum400_mon_mean_timeseries_{sb}.png')
-# plt.show()
+# # plt.title(f'Mean Relative Humidity in North Atlantic - {sb}')
+# # plt.xlabel('Year')
+# # plt.ylabel('RH (%)')
+
+# # #plt.savefig(f'images/data_viz/RHUM400/rhum400_mon_mean_timeseries_{sb}.png')
+# # plt.show()

@@ -222,7 +222,7 @@ tc["bs"] = (
 # maximum wind
 tc['vm'] = ((tc['bs']*tc['p_rmw']*tc['delta_p'])/(tc['Rd']*tc['Tvs (K)']*np.e))**0.5
 
-# print(tc.head(20))
+#print(tc.head(20))
 
 #################################################################################################
 
@@ -252,10 +252,13 @@ tc_sb = tc_sb[['TID', 'LON', 'LAT', 'ISOTIME', 'MSLP', 'WS', 'vm', 'sub_basin_na
 # create year column
 tc_sb['year'] = tc['ISOTIME'].dt.year
 
-# # filter to specific sub basin
-# sb = 'Western Africa'
+# filter out sub basins outside the atlantic
+tc_sb = tc_sb.dropna(subset=['sub_basin_name'])
 
-# tc_sb_filt = tc_sb[tc_sb['sub_basin_name'] == sb]
+#print(tc_sb)
+
+# save to csv
+#tc_sb.to_csv("datasets/data_viz/max_wind_speed_spatial_map_PW.csv")
 
 # # find the max vm per TID
 # tc_max = (
@@ -273,13 +276,13 @@ tc_sb['year'] = tc['ISOTIME'].dt.year
 # )
 
 # instead of max per TID, average across all time steps
-tc_mean = (
-    tc_sb.groupby(["sub_basin_name", "year"])["vm"]
-    .mean()
-    .reset_index()
-)
+# tc_mean = (
+#     tc_sb.groupby(["sub_basin_name", "year"])["vm"]
+#     .mean()
+#     .reset_index()
+# )
 
-print(tc_mean)
+# print(tc_mean)
 
 # save to csv
 #tc_mean.to_csv("datasets/data_viz/max_wind_speed_annual_mean_allTimeSteps_PW.csv")

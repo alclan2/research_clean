@@ -219,13 +219,16 @@ print(shear_sb)
 # trim columns
 shear_sb = shear_sb[['time', 'lat', 'lon', 'shear', 'sub_basin_name', 'year']]
 
-#print(shear_sb)
+print(shear_sb)
 
-# pivot to yearly values
-shear_yr = (
-    shear_sb.groupby(["year", "sub_basin_name"], as_index=False)["shear"]
-      .mean()
-)
+# save to csv
+shear_sb.to_csv("datasets/data_viz/shear_spatial_map_PW.csv")
+
+# # pivot to yearly values
+# shear_yr = (
+#     shear_sb.groupby(["year", "sub_basin_name"], as_index=False)["shear"]
+#       .mean()
+# )
 
 #print(shear_yr)
 

@@ -119,14 +119,14 @@ basins["geometry"] = basins["geometry"].apply(shift_lon)
 #######################################################################################################
 
 # read in anom net cdf
-ds = xr.open_dataset("datasets/COBE2 SST/post-processing/SST_mon_mean_anom_moving_window_jun_oct.nc")
+ds = xr.open_dataset("datasets/COBE2 SST/post-processing/SST_annual_mean_notAnomaly_jun_oct.nc")
 
-#print(ds)
+# print(ds)
 
 # convert to a dataframe
-df = ds['sst'].to_dataframe(name = 'mean_anom').reset_index()
+df = ds['sst'].to_dataframe(name = 'mean').reset_index()
 
-#print(df)
+# print(df)
 
 # join sub basins
 points = gpd.GeoDataFrame(
@@ -161,53 +161,59 @@ filtered_join = gpd.sjoin(
     predicate='within'
 )
 
-# add year column for group by
-filtered_join['year'] = filtered_join['time'].dt.year
-
-# print(filtered_join)
+# # add year column for group by
+# filtered_join['year'] = filtered_join['time'].dt.year
 
 # Calculate annual mean anomaly for each sub-basin
 df_clean = filtered_join.dropna(subset=["sub_basin_name"])
 
-annual_table = (
-    df_clean.groupby(["year", "sub_basin_name"])["mean_anom"]
-            .mean()
-            .reset_index()
-)
+# trim columns
+df_clean = df_clean[['year', 'lat', 'lon', 'mean', 'sub_basin_name']]
 
-print(annual_table)
+print(df_clean)
 
 # save to csv
-annual_table.to_csv("datasets/COBE2 SST/post-processing/sst_anom_moving_window_bySubbasin_table.csv")
+df_clean.to_csv("datasets/data_viz/spatial_map/sst_mean_spatial_map.csv")
 
-#######################################################################################################
+# # annual_table = (
+# #     df_clean.groupby(["year", "sub_basin_name"])["mean_anom"]
+# #             .mean()
+# #             .reset_index()
+# # )
 
-# # plot mean SST anom as a time series per sub basin
+# # print(annual_table)
 
-# # select sub basin
-# sb = 'Deep Tropics'
+# # save to csv
+# # annual_table.to_csv("datasets/COBE2 SST/post-processing/sst_anom_moving_window_bySubbasin_table.csv")
 
-# # pivot to have sub basins be column heads
-# sst_piv = df.pivot_table(
-#     index="year",
-#     columns="basin",
-#     values="mean_anom",
-#     aggfunc="mean"
-# )
+# #######################################################################################################
 
-# #print(sst_piv.head())
+# # # plot mean SST anom as a time series per sub basin
 
-# # scatter plot
-# ax = sst_piv[sb].plot(
-#    kind='line',
-#    marker='o',
-#    figsize=(10, 6)
-# )
+# # # select sub basin
+# # sb = 'Deep Tropics'
 
-# ax.set_xlabel("Year")
-# ax.set_ylabel("SST Anomaly (°C)")
-# ax.set_title(f"Mean Sea Surface Temperature Anomaly in North Atlantic ({sb})")
-# #ax.yaxis.set_major_locator(MaxNLocator(integer=True))
+# # # pivot to have sub basins be column heads
+# # sst_piv = df.pivot_table(
+# #     index="year",
+# #     columns="basin",
+# #     values="mean_anom",
+# #     aggfunc="mean"
+# # )
 
-# #plt.savefig(f"images/data_viz/MSLP/timeseries/tc_mslp_timeseries_{sb}_v2.png")
-# plt.show()
+# # #print(sst_piv.head())
+
+# # # scatter plot
+# # ax = sst_piv[sb].plot(
+# #    kind='line',
+# #    marker='o',
+# #    figsize=(10, 6)
+# # )
+
+# # ax.set_xlabel("Year")
+# # ax.set_ylabel("SST Anomaly (°C)")
+# # ax.set_title(f"Mean Sea Surface Temperature Anomaly in North Atlantic ({sb})")
+# # #ax.yaxis.set_major_locator(MaxNLocator(integer=True))
+
+# # #plt.savefig(f"images/data_viz/MSLP/timeseries/tc_mslp_timeseries_{sb}_v2.png")
+# # plt.show()
