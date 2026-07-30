@@ -156,6 +156,8 @@ mslp_full = (
 # aggregate daily means to monthly means
 mslp_monthly = mslp_full.resample(time="MS").mean("time")
 
+# print(mslp_monthly)
+
 # # calculate moving window anomaly
 # # for moving mean, remove last 10 years (2015-2024) of data since we don't have enough future data to cover the long term mean calc
 # start = str(int(mslp_monthly.time.dt.year.min()) + 10)
@@ -163,15 +165,15 @@ mslp_monthly = mslp_full.resample(time="MS").mean("time")
 # mslp_filt = mslp_monthly.sel(time=slice(start, end))
 # mslp_filt = mslp_filt.load()
 
-mslp_monthly = mslp_monthly.load()
+# mslp_monthly = mslp_monthly.load()
 
-# anomaly calc: use moving mean for year n (year-10, year+10)
-rolling_clim = mslp_monthly.groupby("time.month").map(
-    lambda x: x.rolling(time=21, center=True).mean()
-)
-mslp_anom = mslp_monthly - rolling_clim
+# # anomaly calc: use moving mean for year n (year-10, year+10)
+# rolling_clim = mslp_monthly.groupby("time.month").map(
+#     lambda x: x.rolling(time=21, center=True).mean()
+# )
+# mslp_anom = mslp_monthly - rolling_clim
 
-mslp_anom = mslp_anom.sel(time=slice("1989-01-01", "2014-12-31"))
+# mslp_anom = mslp_anom.sel(time=slice("1989-01-01", "2014-12-31"))
 
 #print(mslp_anom)
 
@@ -186,9 +188,9 @@ mslp_anom = mslp_anom.sel(time=slice("1989-01-01", "2014-12-31"))
 
 # join sub basins
 # convert DataArray to a DataFrame
-df = mslp_anom.to_dataframe(name="mslp_anom").reset_index()
+df = mslp_monthly.to_dataframe(name="mslp_mean").reset_index()
 
-#print(df)
+# print(df)
 
 # Create point geometries
 points = gpd.GeoDataFrame(
@@ -209,17 +211,17 @@ points = gpd.sjoin(
 points["year"] = points["time"].dt.year
 
 # calculate yearly mean anomaly per sub-basin
-mslp_anom_yearly = (
+mslp_mean_yearly = (
     points
-    .groupby(["year", "sub_basin_name"])["mslp_anom"]
+    .groupby(["year", "sub_basin_name"])["mslp_mean"]
     .mean()
     .reset_index()
 )
 
-print(mslp_anom_yearly)
+# print(mslp_mean_yearly)
 
-# save to csv
-mslp_anom_yearly.to_csv("datasets/MSLP/post-processing/MSLP_anom_moving_window_bySubbasin_table.csv")
+# # save to csv
+# mslp_mean_yearly.to_csv("datasets/MSLP/post-processing/MSLP_annual_mean_bySubbasin_table.csv")
 
 # ########################################################################################
 
@@ -241,3 +243,4 @@ mslp_anom_yearly.to_csv("datasets/MSLP/post-processing/MSLP_anom_moving_window_b
 # plt.tight_layout()
 # plt.savefig(f"images/data_viz/MSLP/NOAA/MSLP_moving_window_anom_timeseries_{sb}.png")
 # plt.show()
+

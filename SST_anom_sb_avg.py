@@ -161,6 +161,8 @@ filtered_join = gpd.sjoin(
     predicate='within'
 )
 
+# print(filtered_join)
+
 # # add year column for group by
 # filtered_join['year'] = filtered_join['time'].dt.year
 
@@ -170,21 +172,21 @@ df_clean = filtered_join.dropna(subset=["sub_basin_name"])
 # trim columns
 df_clean = df_clean[['year', 'lat', 'lon', 'mean', 'sub_basin_name']]
 
-print(df_clean)
-
-# save to csv
-df_clean.to_csv("datasets/data_viz/spatial_map/sst_mean_spatial_map.csv")
-
-# # annual_table = (
-# #     df_clean.groupby(["year", "sub_basin_name"])["mean_anom"]
-# #             .mean()
-# #             .reset_index()
-# # )
-
-# # print(annual_table)
+# print(df_clean)
 
 # # save to csv
-# # annual_table.to_csv("datasets/COBE2 SST/post-processing/sst_anom_moving_window_bySubbasin_table.csv")
+# df_clean.to_csv("datasets/data_viz/spatial_map/sst_mean_spatial_map.csv")
+
+annual_table = (
+    df_clean.groupby(["year", "sub_basin_name"])["mean"]
+            .mean()
+            .reset_index()
+)
+
+print(annual_table)
+
+# save to csv
+annual_table.to_csv("datasets/COBE2 SST/post-processing/sst_annual_mean_bySubbasin_table.csv")
 
 # #######################################################################################################
 

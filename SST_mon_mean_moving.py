@@ -125,6 +125,8 @@ def shift_lon(geom):
 # shift lon
 sub_basins["geometry"] = sub_basins["geometry"].apply(shift_lon)
 
+########################################################################################################
+
 # open COBE SST monthly mean file
 time_coder = xr.coders.CFDatetimeCoder(use_cftime=True)
 ds = xr.open_dataset(r"datasets/COBE2 SST/sst.mon.mean.nc", decode_times=time_coder)
@@ -145,7 +147,7 @@ sst = sst.rio.set_spatial_dims(x_dim="lon", y_dim="lat")
 region = basins[basins["basin name"] == "N Atlantic"]
 
 # filter out Arctic and continental US sub-basins
-region_subbasins = sub_basins[sub_basins["sub_basin_name"].isin(["Gulf (A)", "Gulf (B)", "Caribbean", "Northeastern Seaboard", "Southeastern Seaboard", "Deep Tropics", "Eastern Tropics", "Mid-latitudinal Atlantic", "Subtropical Atlantic", "Central Atlantic", "Arctic"])]
+region_subbasins = sub_basins[sub_basins["sub_basin_name"].isin(["Gulf (A)", "Gulf (B)", "Caribbean", "Northeastern Seaboard", "Southeastern Seaboard", "Deep Tropics", "Eastern Tropics", "Mid-latitudinal Atlantic", "Subtropical Atlantic", "Central Atlantic", "Arctic", "Western Africa", "Northern Europe", "Mediterranean Sea"])]
 
 # keep full dataset for anom calc
 sst_full = (
@@ -155,9 +157,11 @@ sst_full = (
    .sel(time=slice(None, "2025-12-31"))
 )
 
-# for moving mean, remove last 10 years (2016-2025) of data since we don't have enough future data to cover the long term mean calc
-start = str(int(sst_full.time.dt.year.min()) + 10)
-end   = str(int(sst_full.time.dt.year.max()) - 10)
+print(sst_full)
+
+# # for moving mean, remove last 10 years (2016-2025) of data since we don't have enough future data to cover the long term mean calc
+# start = str(int(sst_full.time.dt.year.min()) + 10)
+# end   = str(int(sst_full.time.dt.year.max()) - 10)
 
 #sst_filt = sst_full.sel(time=slice(start, end))
 
