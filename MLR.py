@@ -120,80 +120,80 @@ merged = (
 )
 
 # filter to time period where data exists across all variables
-merged = merged[(merged["year"] >= 1989) & (merged["year"] <= 2014)]
+merged = merged[(merged["year"] >= 1979) & (merged["year"] <= 2014)]
 
-# print(merged)
+print(merged)
 
 ########################################################################################################################
 
-# # standardize variables for MLR
+# standardize variables for MLR
 
 predictors = ["shear", "vm", "mslp_mean","mslp_anom", "sst_mean", "sst_anom", "rh600"]
 
-# results = {}
+results = {}
 
-# for basin, group in merged.groupby("sub_basin_name"):
+for basin, group in merged.groupby("sub_basin_name"):
 
-#     # remove rows with missing values
-#     group = group.dropna(
-#         subset=["origin_node_count"] + predictors
-#     )
+    # remove rows with missing values
+    group = group.dropna(
+        subset=["mean_lifespan_days"] + predictors
+    )
 
-#     # skip if too few observations or no variation in response
-#     if len(group) < 10:
-#         continue
+    # skip if too few observations or no variation in response
+    if len(group) < 10:
+        continue
 
-#     if group["origin_node_count"].nunique() < 2:
-#         continue
+    if group["mean_lifespan_days"].nunique() < 2:
+        continue
 
-#     # standardize predictors
-#     scaler = StandardScaler()
-#     group[predictors] = scaler.fit_transform(group[predictors])
+    # standardize predictors
+    scaler = StandardScaler()
+    group[predictors] = scaler.fit_transform(group[predictors])
 
-#     # run standardized MLR
-#     model = smf.ols(
-#         "origin_node_count ~ shear + mslp_mean + sst_mean + rh600",
-#         data=group
-#     ).fit()
+    # run standardized MLR
+    model = smf.ols(
+        "mean_lifespan_days ~ shear + mslp_mean + sst_anom + rh600",
+        data=group
+    ).fit()
 
-#     results[basin] = model
+    results[basin] = model
 
-#     # print(basin)
-#     # print(results[basin].summary())
-#     # print(f"{basin}: condition number = {model.condition_number:.1f}")
+    # print(basin)
+    # print(results[basin].summary())
+    # print(f"{basin}: condition number = {model.condition_number:.1f}")
 
-# # combine results into one table per subbasin
-# coef_results = []
+# combine results into one table per subbasin
+coef_results = []
 
-# for basin, model in results.items():
+for basin, model in results.items():
 
-#     row = {
-#         "sub_basin": basin,
-#         "R2": model.rsquared,
-#         "adj_R2": model.rsquared_adj,
-#         "n": int(model.nobs)
-#     }
+    row = {
+        "sub_basin": basin,
+        "R2": model.rsquared,
+        "adj_R2": model.rsquared_adj,
+        "n": int(model.nobs)
+    }
 
-#     # add coefficients
-#     for predictor, coef in model.params.items():
-#         row[f"{predictor}_coef"] = coef
+    # add coefficients
+    for predictor, coef in model.params.items():
+        row[f"{predictor}_coef"] = coef
 
-#     # add p-values
-#     for predictor, pval in model.pvalues.items():
-#         row[f"{predictor}_pval"] = pval
+    # add p-values
+    for predictor, pval in model.pvalues.items():
+        row[f"{predictor}_pval"] = pval
 
-#     coef_results.append(row)
+    coef_results.append(row)
 
-# coef_df = pd.DataFrame(coef_results)
+coef_df = pd.DataFrame(coef_results)
 
-# print(coef_df)
+print(coef_df)
 
-# # save to csv
-# coef_df.to_csv("datasets/data_viz/MLR_origin_nodes_standardized_results_v4.csv")
+# save to csv
+coef_df.to_csv("datasets/data_viz/MLR_origin_nodes_standardized_results_shear_mslpMean_sstAnom_rh600.csv")
 
 ########################################################################################################################
 
-# # # check VIF
+# # check VIF
 # from statsmodels.stats.outliers_influence import variance_inflation_factor
 # import statsmodels.api as sm
 
@@ -222,95 +222,91 @@ predictors = ["shear", "vm", "mslp_mean","mslp_anom", "sst_mean", "sst_anom", "r
 #     vif_results[basin] = vif
 
 # for basin, vif in vif_results.items():
-#     print(f"\n{basin}")
-#     print(vif)
+    # print(f"\n{basin}")
+    # print(vif)
 
 ########################################################################################################################
 
-# LASSO to find best predictor variables
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
-from sklearn.linear_model import LassoCV
-from sklearn.impute import SimpleImputer
-from sklearn.metrics import r2_score, mean_squared_error
+# # LASSO to find best predictor variables
+# from sklearn.pipeline import Pipeline
+# from sklearn.preprocessing import StandardScaler
+# from sklearn.linear_model import LassoCV
+# from sklearn.impute import SimpleImputer
+# from sklearn.metrics import r2_score, mean_squared_error
 
-# predictors
-vars = [
-    "shear",
-    "vm",
-    "sst_anom",
-    "rh600",
-    "mslp_anom",
-    "sst_mean",
-    "mslp_mean"
-]
+# # predictors
+# vars = [
+#     "shear",
+#     "vm",
+#     "sst_anom",
+#     "rh600",
+#     "mslp_anom",
+#     "sst_mean",
+#     "mslp_mean"
+# ]
 
-# lasso function
-def run_lasso(df, target, predictors):
+# # lasso function
+# def run_lasso(df, target, predictors):
 
-    # Keep only needed columns
-    data = df[[target] + predictors].copy()
+#     # Keep only needed columns
+#     data = df[[target] + predictors].copy()
 
-    # Remove rows where dependent variable is missing
-    data = data.dropna(subset=[target])
+#     # Remove rows where dependent variable is missing
+#     data = data.dropna(subset=[target])
 
-    X = data[predictors]
-    y = data[target]
+#     X = data[predictors]
+#     y = data[target]
 
-    # LASSO pipeline
-    model = Pipeline([
-        ("imputer", SimpleImputer(strategy="median")),
-        ("scaler", StandardScaler()),
-        ("lasso", LassoCV(
-            cv=5,
-            random_state=42,
-            max_iter=10000
-        ))
-    ])
+#     # LASSO pipeline
+#     model = Pipeline([
+#         ("imputer", SimpleImputer(strategy="median")),
+#         ("scaler", StandardScaler()),
+#         ("lasso", LassoCV(
+#             cv=5,
+#             random_state=42,
+#             max_iter=10000
+#         ))
+#     ])
 
-    # Fit
-    model.fit(X, y)
+#     # Fit
+#     model.fit(X, y)
 
-    # Predictions
-    y_pred = model.predict(X)
+#     # Predictions
+#     y_pred = model.predict(X)
 
-    # Extract coefficients
-    coef = pd.Series(
-        model.named_steps["lasso"].coef_,
-        index=predictors
-    )
+#     # Extract coefficients
+#     coef = pd.Series(
+#         model.named_steps["lasso"].coef_,
+#         index=predictors
+#     )
 
-    # Sort by importance
-    coef = coef.sort_values(
-        key=abs,
-        ascending=False
-    )
+#     # Sort by importance
+#     coef = coef.sort_values(
+#         key=abs,
+#         ascending=False
+#     )
 
-    print("\nTarget:", target)
-    print("-------------------------")
-    print("Best alpha:", model.named_steps["lasso"].alpha_)
-    print("\nSelected variables:")
-    print(coef[coef != 0])
+#     print("\nTarget:", target)
+#     print("-------------------------")
+#     print("Best alpha:", model.named_steps["lasso"].alpha_)
+#     print("\nSelected variables:")
+#     print(coef[coef != 0])
 
-    print("\nPerformance:")
-    print("R²:", r2_score(y, y_pred))
-    print(
-        "RMSE:",
-        np.sqrt(mean_squared_error(y, y_pred))
-    )
+#     print("\nPerformance:")
+#     print("R²:", r2_score(y, y_pred))
+#     print(
+#         "RMSE:",
+#         np.sqrt(mean_squared_error(y, y_pred))
+#     )
 
-    return model, coef
+#     return model, coef
 
-# run lasso
-origin_model, origin_coef = run_lasso(
-    merged,
-    target="origin_node_count",
-    predictors=vars
-)
-
-
-
-
+# # run lasso
+# origin_model, origin_coef = run_lasso(
+#     merged,
+#     target="origin_node_count",
+#     predictors=vars
+# )
 
 ########################################################################################################################
 
