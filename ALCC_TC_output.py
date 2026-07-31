@@ -247,7 +247,7 @@ og_join = gpd.sjoin(
 
 og_filt['sub_basin_start'] = og_join['sub_basin_name']
 
-#print(og_filt)
+print(og_filt)
 
 # save table
 #og_filt.to_csv(f"datasets/ALCC/post_python_processing/ALCC_tc_output_origins_perYr_wSubbasin_{mode}")
@@ -285,5 +285,5 @@ plt.xticks(fontsize=18)
 plt.yticks(fontsize=18)
 ax.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
 
-plt.savefig(f"images/data_viz/alcc/tc_origin_nodes_{mode}_{sb}_v3.png")
+# plt.savefig(f"images/data_viz/alcc/tc_origin_nodes_{mode}_{sb}_v3.png")
 plt.show()

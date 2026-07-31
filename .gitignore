@@ -13,3 +13,6 @@ __pycache__/
 
 # VS Code settings
 .vscode/
+
+# ignore the tcpyPI folder
+tcpyPI/
