@@ -166,10 +166,10 @@ pi_ds = xr.Dataset(
     }
 )
 
-# print(pi_ds)
+print(pi_ds)
 
 # save to csv
-pi_ds.to_netcdf("datasets/potential_intensity/pi_output.nc")
+# pi_ds.to_netcdf("datasets/potential_intensity/pi_output.nc")
 
 #######################################################################################
 

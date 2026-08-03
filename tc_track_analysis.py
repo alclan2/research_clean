@@ -94,15 +94,17 @@ pivot = pd.pivot_table(
     aggfunc="count",
     fill_value=0
 )
-tracks = pivot.div(pivot.sum(axis=1), axis=0).mul(100)
+# tracks = pivot.div(pivot.sum(axis=1), axis=0).mul(100)
 
 # add total column
 # tracks["Total"] = tracks.sum(axis=1)
 # print(tracks["Total"])
 
 # add line breaks for plotting ease
-tracks_wrapped = tracks.copy()
-tracks_wrapped.index = [fill(x, width=12) for x in tracks.index]
+tracks_wrapped = pivot.copy()
+tracks_wrapped.index = [fill(x, width=12) for x in pivot.index]
+
+print(tracks_wrapped)
 
 ## plot as heatmap
 #plt.figure(figsize=(14, 8))
@@ -140,6 +142,11 @@ colors = [
     "#BAB0AC",  # gray
 ]
 
+# order from largest to smallest before plotting
+tracks_wrapped = tracks_wrapped.loc[
+    tracks_wrapped.sum(axis=1).sort_values(ascending=False).index
+]
+
 ax = tracks_wrapped.plot(
     kind="bar",
     stacked=True,
@@ -147,12 +154,13 @@ ax = tracks_wrapped.plot(
     color=colors
 )
 
-ax.set_ylabel("Fraction of TCs (%)")
+ax.set_ylabel("Count of TCs")
 ax.set_xlabel("Dissipation Sub-Basin", labelpad = 2.0)
 ax.set_title("TC Genesis Location vs. Dissipation Sub-Basin")
+ax.set_ylim(0, tracks_wrapped.sum(axis=1).max() * 1.1)
 
-plt.legend(title="Origin Sub-Basin", bbox_to_anchor=(1.05, 1))
+plt.legend(title="Origin Sub-Basin", bbox_to_anchor=(1.00, 1))
 plt.xticks(rotation=45)
 plt.tight_layout()
-plt.savefig("images/data_viz/tc_track_sb_fraction_stacked_v2.png")
+# plt.savefig("images/data_viz/tc_track_sb_rawCount_stacked_v2.png")
 plt.show()

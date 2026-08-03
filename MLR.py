@@ -12,6 +12,7 @@ import statsmodels.formula.api as smf
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
 import numpy as np
+import math
 
 # load all datasets
 # load origin node file
@@ -120,17 +121,21 @@ merged = (
 )
 
 # filter to time period where data exists across all variables
-merged = merged[(merged["year"] >= 1979) & (merged["year"] <= 2014)]
+merged = merged[(merged["year"] >= 1940) & (merged["year"] <= 2025)]
 
-print(merged)
+# print(merged)
 
 ########################################################################################################################
 
 # standardize variables for MLR
 
-predictors = ["shear", "vm", "mslp_mean","mslp_anom", "sst_mean", "sst_anom", "rh600"]
+predictors = ["vm"]
 
+# save MLR results
 results = {}
+
+# save actual vs. predicted
+predictions = {}
 
 for basin, group in merged.groupby("sub_basin_name"):
 
@@ -147,16 +152,22 @@ for basin, group in merged.groupby("sub_basin_name"):
         continue
 
     # standardize predictors
+    group = group.copy()
+
     scaler = StandardScaler()
     group[predictors] = scaler.fit_transform(group[predictors])
 
-    # run standardized MLR
     model = smf.ols(
-        "mean_lifespan_days ~ shear + mslp_mean + sst_anom + rh600",
+        "mean_lifespan_days ~ vm",
         data=group
     ).fit()
 
     results[basin] = model
+
+    predictions[basin] = pd.DataFrame({
+        "Actual": group["mean_lifespan_days"],
+        "Predicted": model.fittedvalues
+})  
 
     # print(basin)
     # print(results[basin].summary())
@@ -188,8 +199,99 @@ coef_df = pd.DataFrame(coef_results)
 
 print(coef_df)
 
-# save to csv
-coef_df.to_csv("datasets/data_viz/MLR_origin_nodes_standardized_results_shear_mslpMean_sstAnom_rh600.csv")
+######################################################################################################
+
+# choose sub-basin
+basin = "Southeastern Seaboard"  # change to your desired sub-basin
+
+model = results[basin]
+
+# get data for this basin
+group = merged[merged["sub_basin_name"] == basin].dropna(
+    subset=["mean_lifespan_days"] + predictors
+).copy()
+
+# save original shear for plotting
+vm_original = group["vm"].copy()
+
+# standardize predictors for model prediction
+scaler = StandardScaler()
+group[predictors] = scaler.fit_transform(group[predictors])
+
+# predictions
+group["Predicted"] = model.predict(group)
+
+# put back in time order
+group["vm_original"] = vm_original
+group = group.sort_values("year")
+
+
+# create figure
+fig, ax1 = plt.subplots(figsize=(14, 6))
+
+# actual and predicted TC counts
+ax1.plot(
+    group["year"],
+    group["origin_node_count"],
+    color="black",
+    linewidth = 2,
+    label="Actual TC Lifespan (days)",
+    zorder = 3
+)
+
+ax1.plot(
+    group["year"],
+    group["Predicted"],
+    color="tab:blue",
+    linestyle="--",
+    linewidth = 2,
+    label="Predicted TC Lifespan (days)",
+    zorder = 3
+)
+
+ax1.set_xlabel("Year")
+ax1.set_ylabel("TC Average Lifespan (days)", color="black")
+
+
+# secondary axis for shear
+ax2 = ax1.twinx()
+
+ax2.plot(
+    group["year"],
+    group["vm_original"],
+    color="red",
+    linewidth=1,
+    alpha=0.5,
+    zorder=1,
+    label = "Maximum Wind Speed (m/s)"
+)
+
+ax2.set_ylabel("Maximum Wind Speed (m/s)")
+
+
+# title with R2
+ax1.set_title(
+    f"{basin}\nActual vs. Predicted TC Lifespan and Maximum Wind Speed\n$R^2$ = {model.rsquared:.2f}",
+    fontsize=12
+)
+
+# combine legends
+lines1, labels1 = ax1.get_legend_handles_labels()
+lines2, labels2 = ax2.get_legend_handles_labels()
+
+ax1.legend(
+    lines1 + lines2,
+    labels1 + labels2,
+    loc="center left",
+    bbox_to_anchor=(1.08, 0.5)
+)
+
+plt.tight_layout()
+plt.savefig(f"images/data_viz/MLR/vm/actual_vs_predicted_lifespan_vm_{basin}.png")
+plt.show()
+
+# # save to csv
+# coef_df.to_csv("datasets/data_viz/MLR_origin_nodes_standardized_results_shear_mslpMean_sstAnom_rh600.csv")
 
 ########################################################################################################################
 
@@ -197,7 +299,7 @@ coef_df.to_csv("datasets/data_viz/MLR_origin_nodes_standardized_results_shear_ms
 # from statsmodels.stats.outliers_influence import variance_inflation_factor
 # import statsmodels.api as sm
 
-# vif_results = {}
+# vif_tables = []
 
 # for basin, group in merged.groupby("sub_basin_name"):
 
@@ -215,15 +317,28 @@ coef_df.to_csv("datasets/data_viz/MLR_origin_nodes_standardized_results_shear_ms
 
 #     vif = pd.DataFrame({
 #         "Variable": X.columns,
-#         "VIF": [variance_inflation_factor(X.values, i)
-#                 for i in range(X.shape[1])]
+#         "VIF": [
+#             variance_inflation_factor(X.values, i)
+#             for i in range(X.shape[1])
+#         ]
 #     })
 
-#     vif_results[basin] = vif
 
-# for basin, vif in vif_results.items():
-    # print(f"\n{basin}")
-    # print(vif)
+#     # Add basin name
+#     vif["Basin"] = basin
+
+#     vif_tables.append(vif)
+
+# # Combine into one DataFrame
+# vif_summary = pd.concat(vif_tables, ignore_index=True)
+
+# # Optional: reorder columns
+# vif_summary = vif_summary[["Basin", "Variable", "VIF"]]
+
+# print(vif_summary)
+
+# # save to csv
+# # vif_summary.to_csv("datasets/data_viz/MLR/VIF_shear_mslpAnom_sstMean_rh600.csv")
 
 ########################################################################################################################
 
