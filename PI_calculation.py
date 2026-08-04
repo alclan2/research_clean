@@ -72,104 +72,184 @@ sub_basins["geometry"] = sub_basins["geometry"].apply(shift_lon)
 
 #######################################################################################
 
-# load input variables
-sst_ds = xr.open_dataset("datasets/potential_intensity/input/sst_mean_1979-2025.nc")
-msl_ds = xr.open_dataset("datasets/potential_intensity/input/mslp_mean_1979-2025.nc")
-t_ds = xr.open_dataset("datasets/potential_intensity/input/air_temp_mean_1979-2025.nc")
-r_ds = xr.open_dataset("datasets/potential_intensity/input/mixing_ratio_mean_1979-2025.nc")
+# # load input variables
+# sst_ds = xr.open_dataset("datasets/potential_intensity/input/sst_mean_1979-2025.nc")
+# msl_ds = xr.open_dataset("datasets/potential_intensity/input/mslp_mean_1979-2025.nc")
+# t_ds = xr.open_dataset("datasets/potential_intensity/input/air_temp_mean_1979-2025.nc")
+# r_ds = xr.open_dataset("datasets/potential_intensity/input/mixing_ratio_mean_1979-2025.nc")
 
-# DataArrays
-sst = sst_ds["sst"]
-msl = msl_ds["mslp"]
-t   = t_ds["air"]
-r   = r_ds["__xarray_dataarray_variable__"]
+# # DataArrays
+# sst = sst_ds["sst"]
+# msl = msl_ds["mslp"]
+# t   = t_ds["air"]
+# r   = r_ds["__xarray_dataarray_variable__"]
 
-# pressure coordinate
-p = t["p"]
+# # pressure coordinate
+# p = t["p"]
 
-# update units
-t.attrs["units"] = "degC"
+# # update units
+# t.attrs["units"] = "degC"
 
-# convert mslp from Pa to hPa
-msl = msl / 100
-msl.attrs["units"] = "hPa"
+# # convert mslp from Pa to hPa
+# msl = msl / 100
+# msl.attrs["units"] = "hPa"
 
-# interpolate sst grid to match other variable grids (1deg to 2.5deg)
-sst = sst.interp(
-    lat=t.lat,
-    lon=t.lon,
-    method="linear"
-)
-
-# align datasets
-sst, msl, t, r = xr.align(
-    sst,
-    msl,
-    t,
-    r,
-    join="inner"
-)
-
-# # filter to only points over the ocean
-# valid = (
-#     (sst > 26) &
-#     np.isfinite(sst) &
-#     np.isfinite(msl)
+# # interpolate sst grid to match other variable grids (1deg to 2.5deg)
+# sst = sst.interp(
+#     lat=t.lat,
+#     lon=t.lon,
+#     method="linear"
 # )
 
-# sst = sst.where(valid)
-# msl = msl.where(valid)
-# t = t.where(valid)
-# r = r.where(valid)
+# # align datasets
+# sst, msl, t, r = xr.align(
+#     sst,
+#     msl,
+#     t,
+#     r,
+#     join="inner"
+# )
 
-# run pi.py
-result = xr.apply_ufunc(
-    pi,
-    sst,
-    msl,
-    p,
-    t,
-    r,
-    kwargs=dict(
-        CKCD=0.9,
-        ascent_flag=0,
-        diss_flag=1,
-        ptop=50,
-        miss_handle=1,
-    ),
-    input_core_dims=[
-        [],
-        [],
-        ["p"],
-        ["p"],
-        ["p"],
-    ],
-    output_core_dims=[
-        [], [], [], [], []
-    ],
-    output_dtypes=[
-        float, float, int, float, float
-    ],
-    vectorize=True,
-    dask="parallelized",
-)
+# # # filter to only points over the ocean
+# # valid = (
+# #     (sst > 26) &
+# #     np.isfinite(sst) &
+# #     np.isfinite(msl)
+# # )
 
-vmax, pmin, ifl, t0, otl = result
+# # sst = sst.where(valid)
+# # msl = msl.where(valid)
+# # t = t.where(valid)
+# # r = r.where(valid)
 
-pi_ds = xr.Dataset(
-    {
-        "vmax": vmax,
-        "pmin": pmin,
-        "ifl": ifl,
-        "t0": t0,
-        "otl": otl,
-    }
-)
+# # run pi.py
+# result = xr.apply_ufunc(
+#     pi,
+#     sst,
+#     msl,
+#     p,
+#     t,
+#     r,
+#     kwargs=dict(
+#         CKCD=0.9,
+#         ascent_flag=0,
+#         diss_flag=1,
+#         ptop=50,
+#         miss_handle=1,
+#     ),
+#     input_core_dims=[
+#         [],
+#         [],
+#         ["p"],
+#         ["p"],
+#         ["p"],
+#     ],
+#     output_core_dims=[
+#         [], [], [], [], []
+#     ],
+#     output_dtypes=[
+#         float, float, int, float, float
+#     ],
+#     vectorize=True,
+#     dask="parallelized",
+# )
 
-print(pi_ds)
+# vmax, pmin, ifl, t0, otl = result
+
+# pi_ds = xr.Dataset(
+#     {
+#         "vmax": vmax,
+#         "pmin": pmin,
+#         "ifl": ifl,
+#         "t0": t0,
+#         "otl": otl,
+#     }
+# )
+
+# print(pi_ds)
 
 # save to csv
 # pi_ds.to_netcdf("datasets/potential_intensity/pi_output.nc")
+
+#######################################################################################
+
+# load PI dataset
+ds = xr.open_dataset("datasets/potential_intensity/pi_output.nc")
+
+print(ds)
+
+# convert to data frame
+df = ds["vmax"].to_dataframe(name="vmax").reset_index()
+
+# remove missing PI values (over land)
+df = df.dropna(subset=["vmax"])
+
+# convert grid cells to points
+gdf = gpd.GeoDataFrame(
+    df,
+    geometry=gpd.points_from_xy(df.lon, df.lat),
+    crs="EPSG:4326",
+)
+
+# join sub basins
+gdf = gpd.sjoin(
+    gdf,
+    sub_basins[["sub_basin_name", "geometry"]],
+    how="inner",
+    predicate="within",   # or "intersects"
+)
+
+# # add year column
+# gdf['year'] = gdf['time'].dt.year
+
+# # pivot to time series
+# ts = (
+#     gdf.groupby(["year", "sub_basin_name"])["vmax"]
+#        .mean()
+#        .unstack("sub_basin_name")
+# )
+
+# # Number of sub-basins
+# n = len(ts.columns)
+
+# # Choose grid dimensions
+# ncols = 4
+# nrows = int(np.ceil(n / ncols))
+
+# fig, axes = plt.subplots(
+#     nrows=nrows,
+#     ncols=ncols,
+#     figsize=(5*ncols, 3.5*nrows),
+#     sharex=False,
+#     sharey=False
+# )
+
+# # Flatten axes array for easy iteration
+# axes = axes.flatten()
+
+# for ax, sb in zip(axes, ts.columns):
+#     ax.plot(
+#         ts.index,
+#         ts[sb],
+#         marker='o',
+#         linestyle='-',
+#         markersize=4,
+#         alpha=0.7
+#     )
+#     ax.set_title(sb)
+#     ax.grid(alpha=0.3)
+
+# # Remove any unused axes
+# for ax in axes[len(ts.columns):]:
+#     fig.delaxes(ax)
+
+# fig.supxlabel("Year")
+# fig.supylabel("Potential Intensity (m/s)")
+# fig.suptitle("Average Potential Intensity by Sub-Basin", fontsize=16)
+
+# plt.tight_layout()
+# plt.savefig(f"images/data_viz/potential_intensity/PI_timeseries_grid.png")
+# plt.show()
 
 #######################################################################################
 
@@ -245,5 +325,5 @@ print(pi_ds)
 
 # ax.set_title(f"TC Mean Potential Intensity in North Atlantic (1979-2025)")
 
-# plt.savefig("images/data_viz/potential_intensity/PI_NAtl.png")
+# # plt.savefig("images/data_viz/potential_intensity/PI_NAtl.png")
 # plt.show()

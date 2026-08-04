@@ -287,7 +287,7 @@ ax1.legend(
 )
 
 plt.tight_layout()
-plt.savefig(f"images/data_viz/MLR/vm/actual_vs_predicted_lifespan_vm_{basin}.png")
+# plt.savefig(f"images/data_viz/MLR/vm/actual_vs_predicted_lifespan_vm_{basin}.png")
 plt.show()
 
 # # save to csv
