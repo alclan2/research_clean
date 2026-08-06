@@ -16,7 +16,7 @@ import math
 
 # load all datasets
 # load origin node file
-ds = pd.read_csv("datasets/data_viz/TC_origin_node_count_perSubbasin_SyCLoPS.csv")
+ds = pd.read_csv("datasets/data_viz/TC+TD_origin_node_count_perSubbasin_SyCLoPS.csv")
 
 # load lifespan annual mean file
 ls = pd.read_csv("datasets/data_viz/lifespan_annual_mean_per_origin_subbasin.csv")
@@ -42,7 +42,10 @@ mslp_anom = pd.read_csv("datasets/MSLP/post-processing/MSLP_anom_moving_window_b
 # load MSLP mean
 mslp_mean = pd.read_csv("datasets/MSLP/post-processing/MSLP_annual_mean_bySubbasin_table.csv")
 
-# print(mslp_mean)
+# load GPI EN data
+gpi = pd.read_csv("datasets/GPI/GPI_EN_calc/GPI_annual_mean_perSubbasin.csv")
+
+# print(gpi)
 
 # reformat origins and rh tables
 origins = ds.melt(
@@ -118,6 +121,11 @@ merged = (
         on=["year", "sub_basin_name"],
         how="outer"
     )
+    .merge(
+        gpi,
+        on=["year", "sub_basin_name"],
+        how="outer"
+    )
 )
 
 # filter to time period where data exists across all variables
@@ -129,7 +137,7 @@ merged = merged[(merged["year"] >= 1940) & (merged["year"] <= 2025)]
 
 # standardize variables for MLR
 
-predictors = ["vm"]
+predictors = ["rh600"]
 
 # save MLR results
 results = {}
@@ -141,14 +149,14 @@ for basin, group in merged.groupby("sub_basin_name"):
 
     # remove rows with missing values
     group = group.dropna(
-        subset=["mean_lifespan_days"] + predictors
+        subset=["origin_node_count"] + predictors
     )
 
     # skip if too few observations or no variation in response
     if len(group) < 10:
         continue
 
-    if group["mean_lifespan_days"].nunique() < 2:
+    if group["origin_node_count"].nunique() < 2:
         continue
 
     # standardize predictors
@@ -158,14 +166,14 @@ for basin, group in merged.groupby("sub_basin_name"):
     group[predictors] = scaler.fit_transform(group[predictors])
 
     model = smf.ols(
-        "mean_lifespan_days ~ vm",
+        "origin_node_count ~ rh600",
         data=group
     ).fit()
 
     results[basin] = model
 
     predictions[basin] = pd.DataFrame({
-        "Actual": group["mean_lifespan_days"],
+        "Actual": group["origin_node_count"],
         "Predicted": model.fittedvalues
 })  
 
@@ -197,22 +205,25 @@ for basin, model in results.items():
 
 coef_df = pd.DataFrame(coef_results)
 
-print(coef_df)
+# print(coef_df)
+
+# # save coef table as csv
+# coef_df.to_csv("datasets/data_viz/MLR/TC+TD/single_var_coef_tables/MLR_origin_nodes_vs_gpi_coef_table.csv")
 
 ######################################################################################################
 
 # choose sub-basin
-basin = "Southeastern Seaboard"  # change to your desired sub-basin
+basin = "Mid-latitudinal Atlantic"
 
 model = results[basin]
 
 # get data for this basin
 group = merged[merged["sub_basin_name"] == basin].dropna(
-    subset=["mean_lifespan_days"] + predictors
+    subset=["origin_node_count"] + predictors
 ).copy()
 
 # save original shear for plotting
-vm_original = group["vm"].copy()
+rh600_original = group["rh600"].copy()
 
 # standardize predictors for model prediction
 scaler = StandardScaler()
@@ -222,9 +233,8 @@ group[predictors] = scaler.fit_transform(group[predictors])
 group["Predicted"] = model.predict(group)
 
 # put back in time order
-group["vm_original"] = vm_original
+group["rh600_original"] = rh600_original
 group = group.sort_values("year")
-
 
 # create figure
 fig, ax1 = plt.subplots(figsize=(14, 6))
@@ -235,7 +245,7 @@ ax1.plot(
     group["origin_node_count"],
     color="black",
     linewidth = 2,
-    label="Actual TC Lifespan (days)",
+    label="Actual TC+TD Origin Nodes (count)",
     zorder = 3
 )
 
@@ -245,12 +255,12 @@ ax1.plot(
     color="tab:blue",
     linestyle="--",
     linewidth = 2,
-    label="Predicted TC Lifespan (days)",
+    label="Predicted TC+TD Origin Nodes (count)",
     zorder = 3
 )
 
 ax1.set_xlabel("Year")
-ax1.set_ylabel("TC Average Lifespan (days)", color="black")
+ax1.set_ylabel("TC+TD Origin Nodes", color="black")
 
 
 # secondary axis for shear
@@ -258,20 +268,20 @@ ax2 = ax1.twinx()
 
 ax2.plot(
     group["year"],
-    group["vm_original"],
+    group["rh600_original"],
     color="red",
     linewidth=1,
     alpha=0.5,
     zorder=1,
-    label = "Maximum Wind Speed (m/s)"
+    label = "RH (%)"
 )
 
-ax2.set_ylabel("Maximum Wind Speed (m/s)")
+ax2.set_ylabel("RH (%)")
 
 
 # title with R2
 ax1.set_title(
-    f"{basin}\nActual vs. Predicted TC Lifespan and Maximum Wind Speed\n$R^2$ = {model.rsquared:.2f}",
+    f"{basin}\nActual vs. Predicted TC+TD Origin Locations and Relative Humidity (600hPa)\n$R^2$ = {model.rsquared:.2f}",
     fontsize=12
 )
 
@@ -287,8 +297,8 @@ ax1.legend(
 )
 
 plt.tight_layout()
-# plt.savefig(f"images/data_viz/MLR/vm/actual_vs_predicted_lifespan_vm_{basin}.png")
-plt.show()
+# plt.savefig(f"images/data_viz/MLR/TC+TD/rh600/actual_vs_predicted_origin_nodes_rh600_{basin}.png")
+# plt.show()
 
 # # save to csv
 # coef_df.to_csv("datasets/data_viz/MLR_origin_nodes_standardized_results_shear_mslpMean_sstAnom_rh600.csv")

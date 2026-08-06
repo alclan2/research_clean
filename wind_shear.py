@@ -12,6 +12,8 @@ import matplotlib.pyplot as plt
 import xarray as xr
 import glob
 
+# CALCULATING SHEAR USING ONLY U COMPONENT DIFFERENCE
+
 # read in basin definition file
 polygons_dict = {}
 
