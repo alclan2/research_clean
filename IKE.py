@@ -17,4 +17,4 @@ ClassifiedData = r"datasets/SyCLoPS/SyCLoPS_classified_ERA5_1940_2024.parquet"
 # open the parquet format file (PyArrow package required)
 df = pd.read_parquet(ClassifiedData)
 
-print(df)
+print(df.head())

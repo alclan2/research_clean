@@ -89,20 +89,20 @@ ds = pd.read_csv(r"datasets/SyCLoPS/tc_track_subbasin_table.csv")
 pivot = pd.pivot_table(
    ds,
     values="TID",
-    index="sub_basin_end",
-    columns="sub_basin_start",
+    index="sub_basin_start",
+    columns="sub_basin_end",
     aggfunc="count",
     fill_value=0
 )
-# tracks = pivot.div(pivot.sum(axis=1), axis=0).mul(100)
+tracks = pivot.div(pivot.sum(axis=1), axis=0).mul(100)
 
 # add total column
 # tracks["Total"] = tracks.sum(axis=1)
 # print(tracks["Total"])
 
 # add line breaks for plotting ease
-tracks_wrapped = pivot.copy()
-tracks_wrapped.index = [fill(x, width=12) for x in pivot.index]
+tracks_wrapped = tracks.copy()
+tracks_wrapped.index = [fill(x, width=12) for x in tracks.index]
 
 print(tracks_wrapped)
 
@@ -128,18 +128,15 @@ print(tracks_wrapped)
 
 ##################################################################################
 
-# stacked bar chart
-colors = [
-    "#4E79A7",  # blue
-    "#F28E2B",  # orange
-    "#E15759",  # red
-    "#76B7B2",  # teal
-    "#59A14F",  # green
-    "#EDC948",  # yellow
-    "#B07AA1",  # purple
-    "#FF9DA7",  # pink
-    "#9C755F",  # brown
-    "#BAB0AC",  # gray
+# number of categories in your legend
+n_colors = tracks_wrapped.shape[1]
+
+# generate colors automatically
+colors = plt.cm.tab20(range(n_colors))
+
+# order from largest to smallest before plotting
+tracks_wrapped = tracks_wrapped.loc[
+    tracks_wrapped.sum(axis=1).sort_values(ascending=False).index
 ]
 
 # order from largest to smallest before plotting
@@ -154,13 +151,13 @@ ax = tracks_wrapped.plot(
     color=colors
 )
 
-ax.set_ylabel("Count of TCs")
-ax.set_xlabel("Dissipation Sub-Basin", labelpad = 2.0)
-ax.set_title("TC Genesis Location vs. Dissipation Sub-Basin")
+ax.set_ylabel("% of TCs")
+ax.set_xlabel("Origin Sub-Basin", labelpad = 2.0)
+ax.set_title("TC Dissipation Location vs. Origin Sub-Basin")
 ax.set_ylim(0, tracks_wrapped.sum(axis=1).max() * 1.1)
 
-plt.legend(title="Origin Sub-Basin", bbox_to_anchor=(1.00, 1))
+plt.legend(title="Dissipation Sub-Basin", bbox_to_anchor=(1.00, 1))
 plt.xticks(rotation=45)
 plt.tight_layout()
-# plt.savefig("images/data_viz/tc_track_sb_rawCount_stacked_v2.png")
+plt.savefig("images/data_viz/tc_track_sb_fraction_byOrigin_stacked_v2.png")
 plt.show()

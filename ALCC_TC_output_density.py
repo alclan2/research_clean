@@ -76,17 +76,8 @@ ds_dict = {
 }
 ds = ds_dict[mode]
 
-# find origin node
-og = (
-    ds
-    .groupby('track_id', as_index=False)
-    .head(1)
-)
-
 # convert lon to 180 scale
-og['lon_180'] = ((og['lon'] + 180) % 360) - 180
-
-#print(og)
+ds['lon_180'] = ((ds['lon'] + 180) % 360) - 180
 
 #####################################################################################################################
 
@@ -204,53 +195,73 @@ sub_basins["geometry"] = sub_basins["geometry"].apply(shift_lon)
 # #####################################################################################################################
 
 # convert LAT and LON to a new column Points which contains (lon, lat) and convert to a geo data frame so we can filter using polygons
-og_points = gpd.GeoDataFrame(
-    og, 
-    geometry = gpd.points_from_xy(og.lon_180, og.lat),
+ds_points = gpd.GeoDataFrame(
+    ds, 
+    geometry = gpd.points_from_xy(ds.lon_180, ds.lat),
     crs = "EPSG:4326"
 )
 
 #print(og_points.shape)
 
 # filter points to North Atlantic
-og_filt = gpd.sjoin(
-     og_points,
+ds_filt = gpd.sjoin(
+     ds_points,
      basins[basins["basin name"] == "N Atlantic"],
      how = "inner",
      predicate = "within"
 )
 
-#print(og_filt.shape)
+# #print(og_filt.shape)
 
 # filter to only columns we need
-og_filt = og_filt[['track_id', 'year', 'lon_180', 'lat', 'mode', 'geometry', 'slp', 'wind']]
+ds_filt = ds_filt[['track_id', 'year', 'lon_180', 'lat', 'mode', 'geometry', 'slp', 'wind']]
 
-# print(og_filt.columns)
-# #print(tc_track.head())
+# # print(og_filt.columns)
+# # #print(tc_track.head())
 
 # join sub basin name for starting and ending points
-og_gdf = gpd.GeoDataFrame(
-     og_filt,
+ds_gdf = gpd.GeoDataFrame(
+     ds_filt,
      geometry=gpd.points_from_xy(
-         og_filt.lon_180,
-         og_filt.lat
+         ds_filt.lon_180,
+         ds_filt.lat
      ),
      crs=sub_basins.crs
 )
 
-og_join = gpd.sjoin(
-     og_gdf,
+ds_join = gpd.sjoin(
+     ds_gdf,
      sub_basins[['sub_basin_name', 'geometry']],
      how='left',
      predicate='within'
 )
 
-og_filt['sub_basin_start'] = og_join['sub_basin_name']
+ds_filt['sub_basin_start'] = ds_join['sub_basin_name']
 
-print(og_filt)
+# print(ds_filt)
+
+df = ds_filt.copy()
+
+# create 5deg bins
+df["lat_bin"] = np.floor(df["lat"] / 5) * 5
+df["lon_bin"] = np.floor(df["lon_180"] / 5) * 5
+
+# count nodes in each bin
+counts = (
+    df.groupby(
+        ["year", "sub_basin_start", "mode", "lat_bin", "lon_bin"],
+        as_index=False
+    )
+    .size()
+    .rename(columns={"size": "count"})
+)
+
+# print(ds_filt["sub_basin_start"].isna().sum())
+
+print(counts)
 
 # save table
-# og_filt.to_csv(f"datasets/ALCC/post_python_processing/{TC}/{run}/ALCC_{TC}_{run}_output_origins_perYr_wSubbasin_{mode}")
+ds_filt.to_csv(f"datasets/ALCC/post_python_processing/{TC}/{run}/density/ALCC_{TC}_{run}_output_density_perYr_wSubbasin_{mode}")
 
 #####################################################################################################################
 

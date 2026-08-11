@@ -79,117 +79,117 @@ for attr in [
 
 ######################################################################################################
 
-# # plot spatial map
-# gpi_clim = gpi.mean("time")
+# plot spatial map
+gpi_clim = gpi.mean("time")
 
-# gpi_clim.plot(
-#     cmap="viridis",
-#     robust=True,
-#     figsize=(10,5)
-# )
+gpi_clim.plot(
+    cmap="viridis",
+    robust=True,
+    figsize=(10,5)
+)
 
-# plt.show()
+plt.show()
 
 ######################################################################################################
 
-# plot timeseries of GPI per sub basin
-# read in NAtl subbasin polygons
-sub_polygons_dict = {}
+# # plot timeseries of GPI per sub basin
+# # read in NAtl subbasin polygons
+# sub_polygons_dict = {}
 
-with open("tc_subbasins_NAtl_v5.dat", "r") as f:
-    for line in f:
-        line = line.strip()
-        if not line or line.startswith("#"):
-            continue
+# with open("tc_subbasins_NAtl_v5.dat", "r") as f:
+#     for line in f:
+#         line = line.strip()
+#         if not line or line.startswith("#"):
+#             continue
 
-        parts = line.split(",")
-        sub_basin_name = parts[0].replace('"', '')
-        n_vertices = int(parts[1])
+#         parts = line.split(",")
+#         sub_basin_name = parts[0].replace('"', '')
+#         n_vertices = int(parts[1])
 
-        lon_vals = list(map(float, parts[2:2+n_vertices]))
-        lon_vals = [(lon + 180) % 360 - 180 for lon in lon_vals]
-        lat_vals = list(map(float, parts[2+n_vertices:2+2*n_vertices]))
+#         lon_vals = list(map(float, parts[2:2+n_vertices]))
+#         lon_vals = [(lon + 180) % 360 - 180 for lon in lon_vals]
+#         lat_vals = list(map(float, parts[2+n_vertices:2+2*n_vertices]))
 
-        coords = list(zip(lon_vals, lat_vals))
-        poly = Polygon(coords)
+#         coords = list(zip(lon_vals, lat_vals))
+#         poly = Polygon(coords)
 
-        if sub_basin_name not in sub_polygons_dict:
-            sub_polygons_dict[sub_basin_name] = []
-        sub_polygons_dict[sub_basin_name].append(poly)
+#         if sub_basin_name not in sub_polygons_dict:
+#             sub_polygons_dict[sub_basin_name] = []
+#         sub_polygons_dict[sub_basin_name].append(poly)
 
-# Convert to GeoDataFrame
-sub_basin_records = []
+# # Convert to GeoDataFrame
+# sub_basin_records = []
 
-for name, poly_list in sub_polygons_dict.items():
-    if len(poly_list) == 1:
-        geom = poly_list[0]
-    else:
-        geom = MultiPolygon(poly_list)
+# for name, poly_list in sub_polygons_dict.items():
+#     if len(poly_list) == 1:
+#         geom = poly_list[0]
+#     else:
+#         geom = MultiPolygon(poly_list)
 
-    sub_basin_records.append({
-        "sub_basin_name": name,
-        "geometry": geom
-    })
+#     sub_basin_records.append({
+#         "sub_basin_name": name,
+#         "geometry": geom
+#     })
 
-sub_basins = gpd.GeoDataFrame(sub_basin_records, crs="EPSG:4326",geometry="geometry")
+# sub_basins = gpd.GeoDataFrame(sub_basin_records, crs="EPSG:4326",geometry="geometry")
 
-# fix invalid polygons
-sub_basins["geometry"] = sub_basins["geometry"].buffer(0)
+# # fix invalid polygons
+# sub_basins["geometry"] = sub_basins["geometry"].buffer(0)
 
-# remove empty geometries
-sub_basins = sub_basins[~sub_basins.geometry.is_empty]
+# # remove empty geometries
+# sub_basins = sub_basins[~sub_basins.geometry.is_empty]
 
-# longitude conversion
-import shapely.ops
-def shift_lon(geom):
-    return shapely.ops.transform(
-        lambda x, y: (((x + 180) % 360) - 180, y),
-        geom
-    )
+# # longitude conversion
+# import shapely.ops
+# def shift_lon(geom):
+#     return shapely.ops.transform(
+#         lambda x, y: (((x + 180) % 360) - 180, y),
+#         geom
+#     )
 
-# shift lon
-sub_basins["geometry"] = sub_basins["geometry"].apply(shift_lon)
+# # shift lon
+# sub_basins["geometry"] = sub_basins["geometry"].apply(shift_lon)
 
-# convert to data frame
-gpi_df = gpi.to_dataframe().reset_index()
+# # convert to data frame
+# gpi_df = gpi.to_dataframe().reset_index()
 
-# print(gpi_df)
+# # print(gpi_df)
 
-# add points column to join sub basins
-points = gpd.GeoDataFrame(
-    gpi_df,
-    geometry=gpd.points_from_xy(
-        gpi_df.lon,
-        gpi_df.lat
-    ),
-    crs="EPSG:4326"
-)
+# # add points column to join sub basins
+# points = gpd.GeoDataFrame(
+#     gpi_df,
+#     geometry=gpd.points_from_xy(
+#         gpi_df.lon,
+#         gpi_df.lat
+#     ),
+#     crs="EPSG:4326"
+# )
 
-# spatial join
-gpi_sb = gpd.sjoin(
-    points,
-    sub_basins[["sub_basin_name", "geometry"]],
-    how="left",
-    predicate="covered_by"
-)
+# # spatial join
+# gpi_sb = gpd.sjoin(
+#     points,
+#     sub_basins[["sub_basin_name", "geometry"]],
+#     how="left",
+#     predicate="covered_by"
+# )
 
-# add year column
-gpi_sb["year"] = gpi_sb["time"].dt.year
+# # add year column
+# gpi_sb["year"] = gpi_sb["time"].dt.year
 
-# drop NaNs
-gpi_sb = gpi_sb.dropna(subset=["sub_basin_name"])
+# # drop NaNs
+# gpi_sb = gpi_sb.dropna(subset=["sub_basin_name"])
 
-# filter columns
-gpi_sb = gpi_sb[['time', 'lat', 'lon', 'gpi', 'sub_basin_name', 'year']]
+# # filter columns
+# gpi_sb = gpi_sb[['time', 'lat', 'lon', 'gpi', 'sub_basin_name', 'year']]
 
-# find annual average per subbasin
-gpi_annual = (
-    gpi_sb.groupby(["year", "sub_basin_name"])["gpi"]
-      .mean()
-      .reset_index()
-)
+# # find annual average per subbasin
+# gpi_annual = (
+#     gpi_sb.groupby(["year", "sub_basin_name"])["gpi"]
+#       .mean()
+#       .reset_index()
+# )
 
-print(gpi_annual)
+# print(gpi_annual)
 
 # # select sub basin
 # sb = 'Northern Europe'

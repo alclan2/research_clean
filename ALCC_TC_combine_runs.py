@@ -13,27 +13,28 @@ import tarfile
 TC = 'TC.2'
 run1 = '001'
 run2 = '002'
+subject = 'density'
 
 # read in post python processing ALCC files and average across runs 001 and 002 per mode
-ds_nn_1 = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{run1}/ALCC_{TC}_{run1}_output_origins_perYr_wSubbasin_nn")
-ds_no_1 = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{run1}/ALCC_{TC}_{run1}_output_origins_perYr_wSubbasin_no")
-ds_np_1 = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{run1}/ALCC_{TC}_{run1}_output_origins_perYr_wSubbasin_np")
-ds_on_1 = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{run1}/ALCC_{TC}_{run1}_output_origins_perYr_wSubbasin_on")
-ds_oo_1 = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{run1}/ALCC_{TC}_{run1}_output_origins_perYr_wSubbasin_oo")
-ds_op_1 = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{run1}/ALCC_{TC}_{run1}_output_origins_perYr_wSubbasin_op")
-ds_pn_1 = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{run1}/ALCC_{TC}_{run1}_output_origins_perYr_wSubbasin_pn")
-ds_po_1 = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{run1}/ALCC_{TC}_{run1}_output_origins_perYr_wSubbasin_po")
-ds_pp_1 = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{run1}/ALCC_{TC}_{run1}_output_origins_perYr_wSubbasin_pp")
+ds_nn_1 = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{run1}/{subject}/ALCC_{TC}_{run1}_output_{subject}_perYr_wSubbasin_nn")
+ds_no_1 = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{run1}/{subject}/ALCC_{TC}_{run1}_output_{subject}_perYr_wSubbasin_no")
+ds_np_1 = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{run1}/{subject}/ALCC_{TC}_{run1}_output_{subject}_perYr_wSubbasin_np")
+ds_on_1 = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{run1}/{subject}/ALCC_{TC}_{run1}_output_{subject}_perYr_wSubbasin_on")
+ds_oo_1 = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{run1}/{subject}/ALCC_{TC}_{run1}_output_{subject}_perYr_wSubbasin_oo")
+ds_op_1 = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{run1}/{subject}/ALCC_{TC}_{run1}_output_{subject}_perYr_wSubbasin_op")
+ds_pn_1 = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{run1}/{subject}/ALCC_{TC}_{run1}_output_{subject}_perYr_wSubbasin_pn")
+ds_po_1 = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{run1}/{subject}/ALCC_{TC}_{run1}_output_{subject}_perYr_wSubbasin_po")
+ds_pp_1 = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{run1}/{subject}/ALCC_{TC}_{run1}_output_{subject}_perYr_wSubbasin_pp")
 
-ds_nn_2 = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{run2}/ALCC_{TC}_{run2}_output_origins_perYr_wSubbasin_nn")
-ds_no_2 = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{run2}/ALCC_{TC}_{run2}_output_origins_perYr_wSubbasin_no")
-ds_np_2 = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{run2}/ALCC_{TC}_{run2}_output_origins_perYr_wSubbasin_np")
-ds_on_2 = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{run2}/ALCC_{TC}_{run2}_output_origins_perYr_wSubbasin_on")
-ds_oo_2 = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{run2}/ALCC_{TC}_{run2}_output_origins_perYr_wSubbasin_oo")
-ds_op_2 = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{run2}/ALCC_{TC}_{run2}_output_origins_perYr_wSubbasin_op")
-ds_pn_2 = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{run2}/ALCC_{TC}_{run2}_output_origins_perYr_wSubbasin_pn")
-ds_po_2 = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{run2}/ALCC_{TC}_{run2}_output_origins_perYr_wSubbasin_po")
-ds_pp_2 = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{run2}/ALCC_{TC}_{run2}_output_origins_perYr_wSubbasin_pp")
+ds_nn_2 = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{run2}/{subject}/ALCC_{TC}_{run2}_output_{subject}_perYr_wSubbasin_nn")
+ds_no_2 = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{run2}/{subject}/ALCC_{TC}_{run2}_output_{subject}_perYr_wSubbasin_no")
+ds_np_2 = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{run2}/{subject}/ALCC_{TC}_{run2}_output_{subject}_perYr_wSubbasin_np")
+ds_on_2 = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{run2}/{subject}/ALCC_{TC}_{run2}_output_{subject}_perYr_wSubbasin_on")
+ds_oo_2 = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{run2}/{subject}/ALCC_{TC}_{run2}_output_{subject}_perYr_wSubbasin_oo")
+ds_op_2 = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{run2}/{subject}/ALCC_{TC}_{run2}_output_{subject}_perYr_wSubbasin_op")
+ds_pn_2 = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{run2}/{subject}/ALCC_{TC}_{run2}_output_{subject}_perYr_wSubbasin_pn")
+ds_po_2 = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{run2}/{subject}/ALCC_{TC}_{run2}_output_{subject}_perYr_wSubbasin_po")
+ds_pp_2 = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{run2}/{subject}/ALCC_{TC}_{run2}_output_{subject}_perYr_wSubbasin_pp")
 
 # create 5deg lat/lon bins
 def bin_counts(df):
@@ -202,52 +203,57 @@ all_counts = pd.concat([
     counts_pp,
 ], ignore_index=True)
 
+print(all_counts)
+
+# save to csv
+# all_counts.to_csv(f"datasets/ALCC/post_python_processing/{TC}/{TC}_all_counts_{subject}_avg_table.csv")
+
 ################################################################################################
 
-# groupby subbasin and sum all counts across lat/lon bins
-sb = "Northeastern Seaboard"
+# # groupby subbasin and sum all counts across lat/lon bins
+# sb = "Northeastern Seaboard"
 
-annual = (
-    all_counts.loc[all_counts["sub_basin_start"] == sb]
-    .groupby(["mode", "year"], as_index=False)["mean_count"]
-    .sum()
-)
+# annual = (
+#     all_counts.loc[all_counts["sub_basin_start"] == sb]
+#     .groupby(["mode", "year"], as_index=False)["mean_count"]
+#     .sum()
+# )
 
-# now plot grid of time series per mode
-modes = ["np", "op", "pp",
-         "no", "oo", "po",
-         "nn", "on", "pn"]
+# # now plot grid of time series per mode
+# modes = ["np", "op", "pp",
+#          "no", "oo", "po",
+#          "nn", "on", "pn"]
 
-# calculate axis limits
-year_min = annual["year"].min()
-year_max = annual["year"].max()
-y_max = annual["mean_count"].max()
+# # calculate axis limits
+# year_min = annual["year"].min()
+# year_max = annual["year"].max()
+# y_max = annual["mean_count"].max()
 
-fig, axes = plt.subplots(
-    3, 3,
-    figsize=(14, 7),
-    sharex=True,
-    sharey=True
-)
+# fig, axes = plt.subplots(
+#     3, 3,
+#     figsize=(14, 7),
+#     sharex=True,
+#     sharey=True
+# )
 
-for ax, mode in zip(axes.flat, modes):
-    df = annual[annual["mode"] == mode]
+# for ax, mode in zip(axes.flat, modes):
+#     df = annual[annual["mode"] == mode]
 
-    ax.plot(df["year"], df["mean_count"], color="g", lw=1.8)
-    ax.set_title(mode, fontweight = 'bold')
+#     ax.plot(df["year"], df["mean_count"], color="g", lw=1.8)
+#     ax.set_title(mode, fontweight = 'bold')
 
-    # force the same axis limits
-    ax.set_xlim(year_min - 1, year_max + 1)
-    ax.set_ylim(0, y_max * 1.05)
+#     # force the same axis limits
+#     ax.set_xlim(year_min - 1, year_max + 1)
+#     ax.set_ylim(0, y_max * 1.05)
 
-    # show tick labels on every subplot
-    ax.tick_params(axis="x", labelbottom=True)
-    ax.tick_params(axis="y", labelleft=True)
+#     # show tick labels on every subplot
+#     ax.tick_params(axis="x", labelbottom=True)
+#     ax.tick_params(axis="y", labelleft=True)
 
-fig.suptitle(f"TC Origin Locations - {sb}", fontsize=16)
-fig.supxlabel("Year")
-fig.supylabel("Count of TC Origin Nodes")
+# fig.suptitle(f"TC Origin Locations - {sb}", fontsize=16)
+# fig.supxlabel("Year")
+# fig.supylabel("Count of TC Origin Nodes")
 
-plt.tight_layout()
-plt.savefig(f"images/data_viz/alcc/{TC}/runs_averaged/{TC}_runs_origin_nodes_grid_{sb}.png")
-plt.show()
+# plt.tight_layout()
+# plt.savefig(f"images/data_viz/alcc/{TC}/runs_averaged/{TC}_runs_origin_nodes_grid_{sb}.png")
+# plt.show()
