@@ -131,8 +131,8 @@ ClassifiedData = r"datasets/SyCLoPS/SyCLoPS_v4/SyCLoPS_classified_v4.parquet"
 df = pd.read_parquet(ClassifiedData)
 
 # filter to TCs
-# tc = df[(df.Tropical_Flag==1) & ((df.Short_Label=='TC') | (df.Short_Label=='TD')) & ~(df['Track_Info'].str.contains('QS', case=False, na=False))]
-tc = df[(df.Tropical_Flag==1) & (df.Short_Label=='TC') & ~(df['Track_Info'].str.contains('QS', case=False, na=False))]
+tc = df[(df.Tropical_Flag==1) & ((df.Short_Label=='TC') | (df.Short_Label=='TD')) & ~(df['Track_Info'].str.contains('QS', case=False, na=False))]
+# tc = df[(df.Tropical_Flag==1) & (df.Short_Label=='TC') & ~(df['Track_Info'].str.contains('QS', case=False, na=False))]
 
 # filter columns to what we need
 tc = tc[['LAT', 'LON', 'ISOTIME', 'IKE']]
@@ -306,12 +306,15 @@ ike_piv = (
 
 print(ike_piv)
 
-# # save timeseries to csv
-# ike_piv.to_csv("datasets/IKE/IKE_mean_timeseries.png")
+# save timeseries to csv
+ike_piv.to_csv("datasets/IKE/IKE_TC+TD_accum_timeseries.png")
 
 # plot timeseries of IKE per sub basin
 # exclude sub basins with little data
 exclude = [
+    "Deep Tropics",
+    "Mediterranean Sea",
+    "Western Africa",
     "Arctic",
     "Mid-latitudinal Atlantic",
     "Mid-latitudinal US/CA"
@@ -395,14 +398,14 @@ for ax in axes[len(subbasins):]:
 
 # Common labels
 fig.supxlabel("Year")
-fig.supylabel("Accumulated annual IKE (TJ)")
+fig.supylabel("Mean annual IKE (TJ)")
 
 fig.suptitle(
-    "Accumulated Annual Integrated Kinetic Energy by Sub-Basin",
+    "Average Annual Integrated Kinetic Energy by Sub-Basin",
     fontsize=16,
     y=0.98
 )
 
 plt.tight_layout()
-# plt.savefig("images/data_viz/IKE/IKE_accum_timeseries_perSubbasin.png")
-plt.show()
+# plt.savefig("images/data_viz/IKE/IKE_TC+TD_mean_timeseries_perSubbasin.png")
+# plt.show()

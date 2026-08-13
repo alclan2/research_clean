@@ -45,9 +45,15 @@ mslp_mean = pd.read_csv("datasets/MSLP/post-processing/MSLP_annual_mean_bySubbas
 # load GPI EN data
 gpi = pd.read_csv("datasets/GPI/GPI_EN_calc/GPI_annual_mean_perSubbasin.csv")
 
+# load IKE mean data
+ike_mean = pd.read_csv("datasets/IKE/IKE_TC+TD_mean_timeseries.png")
+
+# load IKE accumulated data
+ike_sum = pd.read_csv("datasets/IKE/IKE_TC+TD_accum_timeseries.png")
+
 # print(gpi)
 
-# reformat origins and rh tables
+# reformat origins, rh, and IKE tables
 origins = ds.melt(
     id_vars="year",
     value_vars=ds.columns.drop(["year", "Total"]),
@@ -61,6 +67,9 @@ rh = ds2.melt(
     value_name="rh600"
 )
 
+ike_mean = ike_mean[['year', 'sub_basin_name', 'IKE']]
+ike_sum = ike_sum[['year', 'sub_basin_name', 'IKE']]
+
 # drop unamed columns
 ls = ls.loc[:, ~ls.columns.str.contains("^Unnamed")]
 sst_anom = sst_anom.loc[:, ~sst_anom.columns.str.contains("^Unnamed")]
@@ -69,6 +78,8 @@ shear = shear.loc[:, ~shear.columns.str.contains("^Unnamed")]
 mslp_anom = mslp_anom.loc[:, ~mslp_anom.columns.str.contains("^Unnamed")]
 sst_mean = sst_mean.loc[:, ~sst_mean.columns.str.contains("^Unnamed")]
 mslp_mean = mslp_mean.loc[:, ~mslp_mean.columns.str.contains("^Unnamed")]
+ike_mean = ike_mean.loc[:, ~ike_mean.columns.str.contains("^Unnamed")]
+ike_sum = ike_sum.loc[:, ~ike_sum.columns.str.contains("^Unnamed")]
 
 # make sure column names match across datasets
 origins = origins.rename(columns={"sub_basin": "sub_basin_name"})
@@ -77,6 +88,8 @@ rh = rh.rename(columns={"sub_basin": "sub_basin_name"})
 vm = vm[["year", "sub_basin_name", "vm"]]
 sst_anom = sst_anom.rename(columns={"mean_anom": "sst_anom"})
 sst_mean = sst_mean.rename(columns={"mean": "sst_mean"})
+ike_mean = ike_mean.rename(columns={"IKE": "ike_mean"})
+ike_sum = ike_sum.rename(columns={"IKE": "ike_sum"})
 
 # merge into one table on year and sub basin
 merged = (
@@ -126,6 +139,16 @@ merged = (
         on=["year", "sub_basin_name"],
         how="outer"
     )
+    .merge(
+        ike_mean,
+        on=["year", "sub_basin_name"],
+        how="outer"
+    )
+    .merge(
+        ike_sum,
+        on=["year", "sub_basin_name"],
+        how="outer"
+    )
 )
 
 # filter to time period where data exists across all variables
@@ -136,7 +159,7 @@ merged = merged[(merged["year"] >= 1940) & (merged["year"] <= 2025)]
 ########################################################################################################################
 
 # standardize variables for MLR
-predictors = ['gpi', 'sst_anom']
+predictors = ['ike_mean', 'sst_mean', 'gpi']
 
 # save MLR results
 results = {}
@@ -165,7 +188,7 @@ for basin, group in merged.groupby("sub_basin_name"):
     group[predictors] = scaler.fit_transform(group[predictors])
 
     model = smf.ols(
-        "origin_node_count ~ gpi + sst_anom",
+        "origin_node_count ~ ike_mean + sst_mean + gpi",
         data=group
     ).fit()
 
@@ -207,13 +230,13 @@ coef_df = pd.DataFrame(coef_results)
 print(coef_df)
 
 # save coef table as csv
-# coef_df.to_csv("datasets/data_viz/MLR/TC+TD/gpi+sst_mean_coef_tables/MLR_origin_nodes_gpi+sstMean_coef_table.csv")
+# coef_df.to_csv("datasets/data_viz/MLR/TC+TD/single_var_coef_tables/MLR_origin_nodes_vs_ike_mean_coef_table.csv")
 
 ######################################################################################################
 
 # # # actual v predicted for TWO variables
 # choose sub-basin
-sb = "Subtropical Atlantic"
+sb = "Northeastern Seaboard"
 
 model = results[sb]
 
@@ -267,14 +290,14 @@ ax.set_title(
 ax.legend()
 
 plt.tight_layout()
-plt.savefig(f"images/data_viz/MLR/TC+TD/gpi+sst_anom/actual_v_predicted_origins_gpi+sstAnom_{sb}.png")
+plt.savefig(f"images/data_viz/MLR/TC+TD/gpi+sst_mean+ike_mean/actual_v_predicted_origins_gpi+sstMean+ikeMean_{sb}.png")
 plt.show()
 
 ######################################################################################################
 
 # # # actual v predicted for ONE variable
 # # choose sub-basin
-# basin = "Mid-latitudinal Atlantic"
+# basin = "Southeastern Seaboard"
 
 # model = results[basin]
 
@@ -284,7 +307,7 @@ plt.show()
 # ).copy()
 
 # # save original shear for plotting
-# rh600_original = group["rh600"].copy()
+# var_original = group["ike_sum"].copy()
 
 # # standardize predictors for model prediction
 # scaler = StandardScaler()
@@ -294,7 +317,7 @@ plt.show()
 # group["Predicted"] = model.predict(group)
 
 # # put back in time order
-# group["rh600_original"] = rh600_original
+# group["ike_sum_original"] = var_original
 # group = group.sort_values("year")
 
 # # create figure
@@ -306,7 +329,7 @@ plt.show()
 #     group["origin_node_count"],
 #     color="black",
 #     linewidth = 2,
-#     label="Actual TC+TD Origin Nodes (count)",
+#     label="TC+TD Origin Nodes (count)",
 #     zorder = 3
 # )
 
@@ -316,7 +339,7 @@ plt.show()
 #     color="tab:blue",
 #     linestyle="--",
 #     linewidth = 2,
-#     label="Predicted TC+TD Origin Nodes (count)",
+#     label="TC+TD Origin Nodes (count)",
 #     zorder = 3
 # )
 
@@ -329,20 +352,20 @@ plt.show()
 
 # ax2.plot(
 #     group["year"],
-#     group["rh600_original"],
+#     group["ike_sum_original"],
 #     color="red",
 #     linewidth=1,
 #     alpha=0.5,
 #     zorder=1,
-#     label = "RH (%)"
+#     label = "Accumulated IKE (TJ)"
 # )
 
-# ax2.set_ylabel("RH (%)")
+# ax2.set_ylabel("Accumulated IKE (TJ)")
 
 
 # # title with R2
 # ax1.set_title(
-#     f"{basin}\nActual vs. Predicted TC+TD Origin Locations and Relative Humidity (600hPa)\n$R^2$ = {model.rsquared:.2f}",
+#     f"{basin}\nActual vs. Predicted TC+TD Origin Locations and Accumulated IKE\n$R^2$ = {model.rsquared:.2f}",
 #     fontsize=12
 # )
 
@@ -358,7 +381,7 @@ plt.show()
 # )
 
 # plt.tight_layout()
-# plt.savefig(f"images/data_viz/MLR/TC+TD/rh600/actual_vs_predicted_origin_nodes_rh600_{basin}.png")
+# # plt.savefig(f"images/data_viz/MLR/TC+TD/ike/actual_vs_predicted_origin_nodes_ikeAccum_{basin}.png")
 # plt.show()
 
 # # save to csv
