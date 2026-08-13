@@ -14,7 +14,7 @@ import cartopy.mpl.ticker as cticker
 import matplotlib.patheffects as pe
 
 # TC version
-TC = 'TC.0'
+TC = 'TC.2'
 
 # load dataset
 df = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{TC}_all_counts_density_avg_table.csv")
@@ -148,7 +148,7 @@ for mode in modes:
 # plot anomalies
 density_cmap = plt.cm.plasma_r
 
-anom_cmap = plt.cm.RdBu_r
+anom_cmap = plt.cm.RdBu
 
 # make symmetric anomaly scale
 max_anom = max(
@@ -302,7 +302,7 @@ cb1 = fig.colorbar(
     orientation='horizontal'
 )
 
-cb1.set_label("oo density (TCs per year)")
+cb1.set_label("TC Density")
 
 
 # anomaly colorbar
@@ -314,7 +314,7 @@ cb2 = fig.colorbar(
     orientation='horizontal'
 )
 
-cb2.set_label("Density anomaly (mode - oo)")
+cb2.set_label("Density anomaly (reference mode oo)")
 
 
 fig.subplots_adjust(
@@ -327,7 +327,7 @@ fig.subplots_adjust(
 )
 
 fig.suptitle(
-    f"North Atlantic TC Density Anomalies ({TC})",
+    f"TC Density Anomalies ({TC})",
     fontsize=16,
     y=0.98
 )
