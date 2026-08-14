@@ -19,7 +19,7 @@ TC = 'TC.2'
 # load dataset
 df = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{TC}_all_counts_density_avg_table.csv")
 
-print(df)
+# print(df)
 
 # filter only oo mode
 df_oo = df[df['mode'] == 'oo'].copy()
@@ -32,6 +32,8 @@ annual_subbasin = (
     .reset_index(name='annual_TCs')
 )
 
+# print(annual_subbasin)
+
 # average the annual sub-basin totals across all years
 density = (
     annual_subbasin
@@ -39,6 +41,8 @@ density = (
     .mean()
     .reset_index(name='TCs_per_year')
 )
+
+print(annual_subbasin.groupby('sub_basin_start')['year'].nunique())
 
 # print(density)
 

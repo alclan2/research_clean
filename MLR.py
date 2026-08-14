@@ -188,7 +188,7 @@ for basin, group in merged.groupby("sub_basin_name"):
     group[predictors] = scaler.fit_transform(group[predictors])
 
     model = smf.ols(
-        "origin_node_count ~ ike_mean + sst_mean + gpi",
+        "origin_node_count ~ sst_mean + gpi + ike_mean",
         data=group
     ).fit()
 
@@ -230,19 +230,19 @@ coef_df = pd.DataFrame(coef_results)
 print(coef_df)
 
 # save coef table as csv
-# coef_df.to_csv("datasets/data_viz/MLR/TC+TD/single_var_coef_tables/MLR_origin_nodes_vs_ike_mean_coef_table.csv")
+# coef_df.to_csv("images/data_viz/MLR/intensity/sst_mean+gpi+ike_mean/MLR_mslp_mean_vs_sstMean+gpi+ikeMean_coef_table.csv")
 
 ######################################################################################################
 
 # # # actual v predicted for TWO variables
 # choose sub-basin
-sb = "Northeastern Seaboard"
+sb = "Eastern Tropics"
 
 model = results[sb]
 
 # get data for this basin
 group = merged[merged["sub_basin_name"] == sb].dropna(
-    subset=["origin_node_count"] + predictors
+    subset=["mslp_mean"] + predictors
 ).copy()
 
 # standardize predictors exactly as during model fitting
@@ -261,11 +261,11 @@ fig, ax = plt.subplots(figsize=(14,6))
 # observed counts
 ax.plot(
     group["year"],
-    group["origin_node_count"],
+    group["mslp_mean"],
     color="black",
     linewidth=2,
     marker="o",
-    label="Observed TC+TD Origin Nodes"
+    label="Observed Mean MSLP"
 )
 
 # predicted counts
@@ -276,22 +276,22 @@ ax.plot(
     linewidth=2,
     linestyle="--",
     marker="s",
-    label="Predicted TC+TD Origin Nodes"
+    label="Predicted Mean MSLP"
 )
 
 ax.set_xlabel("Year")
-ax.set_ylabel("TC+TD Origin Nodes")
+ax.set_ylabel("Mean MSLP")
 
 ax.set_title(
-    f"{sb}\nObserved vs. Predicted TC+TD Origin Nodes\n"
+    f"{sb}\nObserved vs. Predicted Mean MSLP\n"
     f"Multiple Linear Regression ($R^2$ = {model.rsquared:.2f})"
 )
 
 ax.legend()
 
 plt.tight_layout()
-plt.savefig(f"images/data_viz/MLR/TC+TD/gpi+sst_mean+ike_mean/actual_v_predicted_origins_gpi+sstMean+ikeMean_{sb}.png")
-plt.show()
+plt.savefig(f"images/data_viz/MLR/intensity/sst_mean+gpi+ike_mean/actual_v_predicted_mslpMean_gpi+sstMean+ikeMean_{sb}.png")
+# plt.show()
 
 ######################################################################################################
 
@@ -389,50 +389,50 @@ plt.show()
 
 ########################################################################################################################
 
-# # check VIF
-# from statsmodels.stats.outliers_influence import variance_inflation_factor
-# import statsmodels.api as sm
+# check VIF
+from statsmodels.stats.outliers_influence import variance_inflation_factor
+import statsmodels.api as sm
 
-# vif_tables = []
+vif_tables = []
 
-# for basin, group in merged.groupby("sub_basin_name"):
+for basin, group in merged.groupby("sub_basin_name"):
 
-#     group = group.dropna(subset=predictors)
+    group = group.dropna(subset=predictors)
 
-#     if len(group) < 10:
-#         continue
+    if len(group) < 10:
+        continue
 
-#     X = pd.DataFrame(
-#         StandardScaler().fit_transform(group[predictors]),
-#         columns=predictors
-#     )
+    X = pd.DataFrame(
+        StandardScaler().fit_transform(group[predictors]),
+        columns=predictors
+    )
 
-#     X = sm.add_constant(X)
+    X = sm.add_constant(X)
 
-#     vif = pd.DataFrame({
-#         "Variable": X.columns,
-#         "VIF": [
-#             variance_inflation_factor(X.values, i)
-#             for i in range(X.shape[1])
-#         ]
-#     })
+    vif = pd.DataFrame({
+        "Variable": X.columns,
+        "VIF": [
+            variance_inflation_factor(X.values, i)
+            for i in range(X.shape[1])
+        ]
+    })
 
 
-#     # Add basin name
-#     vif["Basin"] = basin
+    # Add basin name
+    vif["Basin"] = basin
 
-#     vif_tables.append(vif)
+    vif_tables.append(vif)
 
-# # Combine into one DataFrame
-# vif_summary = pd.concat(vif_tables, ignore_index=True)
+# Combine into one DataFrame
+vif_summary = pd.concat(vif_tables, ignore_index=True)
 
-# # Optional: reorder columns
-# vif_summary = vif_summary[["Basin", "Variable", "VIF"]]
+# Optional: reorder columns
+vif_summary = vif_summary[["Basin", "Variable", "VIF"]]
 
-# print(vif_summary)
+print(vif_summary)
 
-# # # save to csv
-# # # vif_summary.to_csv("datasets/data_viz/MLR/VIF_shear_mslpAnom_sstMean_rh600.csv")
+# # save to csv
+# # vif_summary.to_csv("datasets/data_viz/MLR/VIF_shear_mslpAnom_sstMean_rh600.csv")
 
 ########################################################################################################################
 
