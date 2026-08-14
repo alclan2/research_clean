@@ -42,7 +42,8 @@ density = (
     .reset_index(name='TCs_per_year')
 )
 
-print(annual_subbasin.groupby('sub_basin_start')['year'].nunique())
+print(df_oo.groupby('sub_basin_start')['year'].agg(['min', 'max', 'nunique']))
+print(df_oo.groupby(['sub_basin_start', 'year']).size().unstack(fill_value=0))
 
 # print(density)
 
