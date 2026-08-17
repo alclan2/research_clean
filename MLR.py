@@ -169,7 +169,7 @@ merged = merged[(merged["year"] >= 1940) & (merged["year"] <= 2025)]
 ########################################################################################################################
 
 # standardize variables for MLR
-predictors = ['gpi']
+predictors = ['mslp_mean']
 
 # save MLR results
 results = {}
@@ -181,14 +181,14 @@ for basin, group in merged.groupby("sub_basin_name"):
 
     # remove rows with missing values
     group = group.dropna(
-        subset=["mslp_mean_y"] + predictors
+        subset=["origin_node_count"] + predictors
     )
 
     # skip if too few observations or no variation in response
     if len(group) < 10:
         continue
 
-    if group["mslp_mean_y"].nunique() < 2:
+    if group["origin_node_count"].nunique() < 2:
         continue
 
     # standardize predictors
@@ -198,14 +198,14 @@ for basin, group in merged.groupby("sub_basin_name"):
     group[predictors] = scaler.fit_transform(group[predictors])
 
     model = smf.ols(
-        "mslp_mean_y ~ gpi",
+        "origin_node_count ~ mslp_mean",
         data=group
     ).fit()
 
     results[basin] = model
 
     predictions[basin] = pd.DataFrame({
-        "Actual": group["mslp_mean_y"],
+        "Actual": group["origin_node_count"],
         "Predicted": model.fittedvalues
 })  
 
@@ -240,7 +240,7 @@ coef_df = pd.DataFrame(coef_results)
 print(coef_df)
 
 # save coef table as csv
-coef_df.to_csv("datasets/data_viz/MLR/intensity/single_variable_coef_tables/gpi/MLR_mslpMeanY_vs_gpi_coef_table.csv")
+coef_df.to_csv("datasets/data_viz/MLR/TC+TD/single_var_coef_tables/MLR_origin_nodes_vs_mslpMean_coef_table.csv")
 
 ######################################################################################################
 
@@ -307,17 +307,17 @@ coef_df.to_csv("datasets/data_viz/MLR/intensity/single_variable_coef_tables/gpi/
 
 # # actual v predicted for ONE variable
 # choose sub-basin
-basin = "Subtropical Atlantic"
+basin = "Northeastern Seaboard"
 
 model = results[basin]
 
 # get data for this basin
 group = merged[merged["sub_basin_name"] == basin].dropna(
-    subset=["mslp_mean_y"] + predictors
+    subset=["origin_node_count"] + predictors
 ).copy()
 
 # save original shear for plotting
-var_original = group["gpi"].copy()
+var_original = group["mslp_mean"].copy()
 
 # standardize predictors for model prediction
 scaler = StandardScaler()
@@ -327,7 +327,7 @@ group[predictors] = scaler.fit_transform(group[predictors])
 group["Predicted"] = model.predict(group)
 
 # put back in time order
-group["gpi_original"] = var_original
+group["mslp_mean_original"] = var_original
 group = group.sort_values("year")
 
 # create figure
@@ -336,10 +336,10 @@ fig, ax1 = plt.subplots(figsize=(14, 6))
 # actual and predicted TC counts
 ax1.plot(
     group["year"],
-    group["mslp_mean_y"],
+    group["origin_node_count"],
     color="black",
     linewidth = 2,
-    label="Actual MSLP (Pa)",
+    label="Actual TC+TD Origin Nodes (count)",
     zorder = 3
 )
 
@@ -349,12 +349,12 @@ ax1.plot(
     color="tab:blue",
     linestyle="--",
     linewidth = 2,
-    label="Predicted MSLP (Pa)",
+    label="Predicted TC+TD Origin Nodes (count)",
     zorder = 3
 )
 
 ax1.set_xlabel("Year")
-ax1.set_ylabel("MSLP", color="black")
+ax1.set_ylabel("TC+TD Origin Nodes", color="black")
 
 
 # secondary axis for shear
@@ -362,20 +362,20 @@ ax2 = ax1.twinx()
 
 ax2.plot(
     group["year"],
-    group["gpi_original"],
+    group["mslp_mean_original"],
     color="red",
     linewidth=1,
     alpha=0.5,
     zorder=1,
-    label = "GPI"
+    label = "MSLP (Pa)"
 )
 
-ax2.set_ylabel("GPI")
+ax2.set_ylabel("MSLP (Pa)")
 
 
 # title with R2
 ax1.set_title(
-    f"{basin}\nActual vs. Predicted Mean Sea Level Pressure and Genesis Potential Index\n$R^2$ = {model.rsquared:.2f}",
+    f"{basin}\nActual vs. Predicted TC+TD Origin Locations and Mean Sea Level Pressure\n$R^2$ = {model.rsquared:.2f}",
     fontsize=12
 )
 
@@ -391,7 +391,7 @@ ax1.legend(
 )
 
 plt.tight_layout()
-plt.savefig(f"images/data_viz/MLR/intensity/gpi/actual_vs_predicted_mslpMeanY_gpi_{basin}.png")
+plt.savefig(f"images/data_viz/MLR/TC+TD/mslp/actual_vs_predicted_origin_nodes_mslpMean_{basin}.png")
 plt.show()
 
 # save to csv
