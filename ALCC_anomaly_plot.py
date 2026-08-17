@@ -19,29 +19,29 @@ TC = 'TC.2'
 # load dataset
 df = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{TC}_all_counts_density_avg_table.csv")
 
-print(df)
+# print(df)
 
-# # filter only oo mode
-# df_oo = df[df['mode'] == 'oo'].copy()
+# filter only oo mode
+df_oo = df[df['mode'] == 'oo'].copy()
 
 # print(df_oo)
 
-# # aggregate density per 5-degree bin
-# density = (
-#     df_oo.groupby(['lat_bin', 'lon_bin'])['mean_count']
-#     .sum()
-#     .div(df['year'].nunique())   # average per year
-#     .reset_index(name='TCs_per_year')
-# )
+# aggregate density per 5-degree bin
+density = (
+    df_oo.groupby(['lat_bin', 'lon_bin'])['mean_count']
+    .sum()
+    .div(df['year'].nunique())   # average per year
+    .reset_index(name='TCs_per_year')
+)
 
-# # print(density)
+# print(density)
 
-# # pivot for heatmap format
-# heatmap_data = density.pivot(
-#     index='lat_bin',
-#     columns='lon_bin',
-#     values='TCs_per_year'
-# )
+# pivot for heatmap format
+heatmap_data = density.pivot(
+    index='lat_bin',
+    columns='lon_bin',
+    values='TCs_per_year'
+)
 
 # ################################################################################
 # # set up sub basins

@@ -36,10 +36,10 @@ sst_mean = pd.read_csv("datasets/COBE2 SST/post-processing/sst_annual_mean_bySub
 # load RH 600hPa 
 ds2 = pd.read_csv("datasets/data_viz/RH_600hPa_yearly_mean_perSubbasin.csv")
 
-# load MSLP anom
+# load MSLP anom (from NOAA - independent variable)
 mslp_anom = pd.read_csv("datasets/MSLP/post-processing/MSLP_anom_moving_window_bySubbasin_table.csv")
 
-# load MSLP mean
+# load MSLP mean (from NOAA - independent variable)
 mslp_mean = pd.read_csv("datasets/MSLP/post-processing/MSLP_annual_mean_bySubbasin_table.csv")
 
 # load GPI EN data
@@ -51,7 +51,10 @@ ike_mean = pd.read_csv("datasets/IKE/IKE_TC+TD_mean_timeseries.png")
 # load IKE accumulated data
 ike_sum = pd.read_csv("datasets/IKE/IKE_TC+TD_accum_timeseries.png")
 
-# print(gpi)
+# load MSLP mean (from SYCLOPS - dependent variable)
+mslp_y = pd.read_csv("datasets/MSLP/mslp_mean_timeseries_perYr_perSB_SYCLOPS.csv")
+
+print(mslp_y)
 
 # reformat origins, rh, and IKE tables
 origins = ds.melt(
@@ -80,6 +83,7 @@ sst_mean = sst_mean.loc[:, ~sst_mean.columns.str.contains("^Unnamed")]
 mslp_mean = mslp_mean.loc[:, ~mslp_mean.columns.str.contains("^Unnamed")]
 ike_mean = ike_mean.loc[:, ~ike_mean.columns.str.contains("^Unnamed")]
 ike_sum = ike_sum.loc[:, ~ike_sum.columns.str.contains("^Unnamed")]
+mslp_y = mslp_y.loc[:, ~mslp_y.columns.str.contains("^Unnamed")]
 
 # make sure column names match across datasets
 origins = origins.rename(columns={"sub_basin": "sub_basin_name"})
@@ -90,12 +94,18 @@ sst_anom = sst_anom.rename(columns={"mean_anom": "sst_anom"})
 sst_mean = sst_mean.rename(columns={"mean": "sst_mean"})
 ike_mean = ike_mean.rename(columns={"IKE": "ike_mean"})
 ike_sum = ike_sum.rename(columns={"IKE": "ike_sum"})
+mslp_y = mslp_y.rename(columns={"MSLP": "mslp_mean_y"})
 
 # merge into one table on year and sub basin
 merged = (
     origins
     .merge(
         ls,
+        on=["year", "sub_basin_name"],
+        how="outer"
+    )
+    .merge(
+        mslp_y,
         on=["year", "sub_basin_name"],
         how="outer"
     )
@@ -159,7 +169,7 @@ merged = merged[(merged["year"] >= 1940) & (merged["year"] <= 2025)]
 ########################################################################################################################
 
 # standardize variables for MLR
-predictors = ['sst_mean']
+predictors = ['gpi']
 
 # save MLR results
 results = {}
@@ -171,14 +181,14 @@ for basin, group in merged.groupby("sub_basin_name"):
 
     # remove rows with missing values
     group = group.dropna(
-        subset=["mslp_mean"] + predictors
+        subset=["mslp_mean_y"] + predictors
     )
 
     # skip if too few observations or no variation in response
     if len(group) < 10:
         continue
 
-    if group["mslp_mean"].nunique() < 2:
+    if group["mslp_mean_y"].nunique() < 2:
         continue
 
     # standardize predictors
@@ -188,14 +198,14 @@ for basin, group in merged.groupby("sub_basin_name"):
     group[predictors] = scaler.fit_transform(group[predictors])
 
     model = smf.ols(
-        "mslp_mean ~ sst_mean",
+        "mslp_mean_y ~ gpi",
         data=group
     ).fit()
 
     results[basin] = model
 
     predictions[basin] = pd.DataFrame({
-        "Actual": group["mslp_mean"],
+        "Actual": group["mslp_mean_y"],
         "Predicted": model.fittedvalues
 })  
 
@@ -230,7 +240,7 @@ coef_df = pd.DataFrame(coef_results)
 print(coef_df)
 
 # save coef table as csv
-# coef_df.to_csv("datasets/data_viz/MLR/intensity/sst_mean+gpi+ike_mean/MLR_mslp_mean_vs_sstMean+gpi+ikeMean_coef_table.csv")
+coef_df.to_csv("datasets/data_viz/MLR/intensity/single_variable_coef_tables/gpi/MLR_mslpMeanY_vs_gpi_coef_table.csv")
 
 ######################################################################################################
 
@@ -297,17 +307,17 @@ print(coef_df)
 
 # # actual v predicted for ONE variable
 # choose sub-basin
-basin = "Mid-latitudinal Atlantic"
+basin = "Subtropical Atlantic"
 
 model = results[basin]
 
 # get data for this basin
 group = merged[merged["sub_basin_name"] == basin].dropna(
-    subset=["mslp_mean"] + predictors
+    subset=["mslp_mean_y"] + predictors
 ).copy()
 
 # save original shear for plotting
-var_original = group["sst_mean"].copy()
+var_original = group["gpi"].copy()
 
 # standardize predictors for model prediction
 scaler = StandardScaler()
@@ -317,7 +327,7 @@ group[predictors] = scaler.fit_transform(group[predictors])
 group["Predicted"] = model.predict(group)
 
 # put back in time order
-group["sst_mean_original"] = var_original
+group["gpi_original"] = var_original
 group = group.sort_values("year")
 
 # create figure
@@ -326,10 +336,10 @@ fig, ax1 = plt.subplots(figsize=(14, 6))
 # actual and predicted TC counts
 ax1.plot(
     group["year"],
-    group["mslp_mean"],
+    group["mslp_mean_y"],
     color="black",
     linewidth = 2,
-    label="Mean MSLP (Pa)",
+    label="Actual MSLP (Pa)",
     zorder = 3
 )
 
@@ -339,12 +349,12 @@ ax1.plot(
     color="tab:blue",
     linestyle="--",
     linewidth = 2,
-    label="Mean MSLP (Pa)",
+    label="Predicted MSLP (Pa)",
     zorder = 3
 )
 
 ax1.set_xlabel("Year")
-ax1.set_ylabel("Mean MSLP", color="black")
+ax1.set_ylabel("MSLP", color="black")
 
 
 # secondary axis for shear
@@ -352,20 +362,20 @@ ax2 = ax1.twinx()
 
 ax2.plot(
     group["year"],
-    group["sst_mean_original"],
+    group["gpi_original"],
     color="red",
     linewidth=1,
     alpha=0.5,
     zorder=1,
-    label = "Mean SST (°C)"
+    label = "GPI"
 )
 
-ax2.set_ylabel("Mean SST (°C)")
+ax2.set_ylabel("GPI")
 
 
 # title with R2
 ax1.set_title(
-    f"{basin}\nActual vs. Predicted Intensity and Mean SST\n$R^2$ = {model.rsquared:.2f}",
+    f"{basin}\nActual vs. Predicted Mean Sea Level Pressure and Genesis Potential Index\n$R^2$ = {model.rsquared:.2f}",
     fontsize=12
 )
 
@@ -381,7 +391,7 @@ ax1.legend(
 )
 
 plt.tight_layout()
-plt.savefig(f"images/data_viz/MLR/intensity/sst_mean/actual_vs_predicted_mslpMean_sstMean_{basin}.png")
+plt.savefig(f"images/data_viz/MLR/intensity/gpi/actual_vs_predicted_mslpMeanY_gpi_{basin}.png")
 plt.show()
 
 # save to csv

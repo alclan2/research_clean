@@ -11,42 +11,36 @@ import matplotlib.colors as colors
 import matplotlib.pyplot as plt
 
 # path to the classified dataset
-ClassifiedData = r"datasets/SyCLoPS/SyCLoPS_classified_ERA5_1940_2024.parquet"
+ClassifiedData = r"datasets/SyCLoPS/SyCLoPS_classified_ERA5_1940_2024_v7.parquet"
 
 # open the parquet format file (PyArrow package required)
 df = pd.read_parquet(ClassifiedData)
-
-#print(df.head())
 
 # TC Nodes:
 dftc_node = df[(df.Tropical_Flag==1) & ((df.Adjusted_Label=='TC') | (df.Adjusted_Label=='TD')) & ~(df['Track_Info'].str.contains('QS', case=False, na=False))]
 # dftc_node = df[(df.Tropical_Flag==1) & (df.Adjusted_Label=='TC') & ~(df['Track_Info'].str.contains('QS', case=False, na=False))]
 
-# #print(dftc_node['Adjusted_Label'].unique())
+# # first node: where the TC originates
+# tc_origin = (
+#     dftc_node
+#     .sort_values(by='ISOTIME')
+#     .groupby('TID', as_index=False)
+#     .head(1)
+# )
 
-# first node: where the TC originates
-tc_origin = (
-    dftc_node
-    .sort_values(by='ISOTIME')
-    .groupby('TID', as_index=False)
-    .head(1)
-)
-
-# #print(tc_origin.shape)
-
-# last node: where the TC dissipates
-TC_TIDs = tc_origin['TID']
-tc_dissipate = (
-    dftc_node[(dftc_node['TID'].isin(TC_TIDs)) & (dftc_node['Tropical_Flag'] == 1)]
-    .sort_values(by='ISOTIME')
-    .groupby('TID', as_index=False)
-    .tail(1)
-)
-
-# #print(tc_dissipate.shape)
+# # last node: where the TC dissipates
+# TC_TIDs = tc_origin['TID']
+# tc_dissipate = (
+#     dftc_node[(dftc_node['TID'].isin(TC_TIDs)) & (dftc_node['Tropical_Flag'] == 1)]
+#     .sort_values(by='ISOTIME')
+#     .groupby('TID', as_index=False)
+#     .tail(1)
+# )
 
 # make a new column with YEAR only from ISOTIME
 #dfc_sub["YEAR"] = pd.to_datetime(dfc_sub["ISOTIME"]).dt.year
+
+################################################################################################
 
 # read in tc_basins file so we can filter to a specific ocean basin
 polygons_dict = {}
@@ -149,102 +143,105 @@ def shift_lon(geom):
 
 # shift lon
 sub_basins["geometry"] = sub_basins["geometry"].apply(shift_lon)
+basins["geometry"] = basins["geometry"].apply(shift_lon)
 
-# convert LAT and LON to a new column Points which contains (lon, lat) and convert to a geo data frame so we can filter using polygons
-tc_origin_points = gpd.GeoDataFrame(
-    tc_origin, 
-    geometry = gpd.points_from_xy(tc_origin.LON, tc_origin.LAT),
-    crs = "EPSG:4326"
-)
+################################################################################################
 
-tc_dissipate_points = gpd.GeoDataFrame(
-    tc_dissipate, 
-    geometry = gpd.points_from_xy(tc_dissipate.LON, tc_dissipate.LAT),
-    crs = "EPSG:4326"
-)
+# # convert LAT and LON to a new column Points which contains (lon, lat) and convert to a geo data frame so we can filter using polygons
+# tc_origin_points = gpd.GeoDataFrame(
+#     tc_origin, 
+#     geometry = gpd.points_from_xy(tc_origin.LON, tc_origin.LAT),
+#     crs = "EPSG:4326"
+# )
 
-# filter points to North Atlantic
-tc_origin_filtered = gpd.sjoin(
-    tc_origin_points,
-    basins[basins["basin name"] == "N Atlantic"],
-    how = "inner",
-    predicate = "within"
-)
+# tc_dissipate_points = gpd.GeoDataFrame(
+#     tc_dissipate, 
+#     geometry = gpd.points_from_xy(tc_dissipate.LON, tc_dissipate.LAT),
+#     crs = "EPSG:4326"
+# )
 
-tc_dissipate_filtered = gpd.sjoin(
-    tc_dissipate_points,
-    basins[basins["basin name"] == "N Atlantic"],
-    how = "inner",
-    predicate = "within"
-)
+# # filter points to North Atlantic
+# tc_origin_filtered = gpd.sjoin(
+#     tc_origin_points,
+#     basins[basins["basin name"] == "N Atlantic"],
+#     how = "inner",
+#     predicate = "within"
+# )
 
-# convert lon to -180-180 from 0-360
-tc_origin_filtered['LON'] = ((tc_origin_filtered['LON'] + 180) % 360) - 180
-tc_dissipate_filtered['LON'] = ((tc_dissipate_filtered['LON'] + 180) % 360) - 180
+# tc_dissipate_filtered = gpd.sjoin(
+#     tc_dissipate_points,
+#     basins[basins["basin name"] == "N Atlantic"],
+#     how = "inner",
+#     predicate = "within"
+# )
 
-# merge start and end nodes on TID
-tc_track = (
-    tc_origin_filtered
-    .merge(
-        tc_dissipate_filtered,
-        on="TID",
-        suffixes=("_start", "_end")
-    )
-)
+# # convert lon to -180-180 from 0-360
+# tc_origin_filtered['LON'] = ((tc_origin_filtered['LON'] + 180) % 360) - 180
+# tc_dissipate_filtered['LON'] = ((tc_dissipate_filtered['LON'] + 180) % 360) - 180
 
-#print(tc_track.columns)
+# # merge start and end nodes on TID
+# tc_track = (
+#     tc_origin_filtered
+#     .merge(
+#         tc_dissipate_filtered,
+#         on="TID",
+#         suffixes=("_start", "_end")
+#     )
+# )
 
-# add Year column so we can create a timeseries
-tc_track['YEAR_start'] = tc_track['ISOTIME_start'].dt.year
-tc_track['YEAR_end'] = tc_track['ISOTIME_end'].dt.year
+# #print(tc_track.columns)
 
-# filter to only columns we need
-tc_track = tc_track[['TID', 'LON_start', 'LAT_start', 'LON_end', 'LAT_end', 'YEAR_start', 'YEAR_end', 'MSLP_start', 'MSLP_end']]
+# # add Year column so we can create a timeseries
+# tc_track['YEAR_start'] = tc_track['ISOTIME_start'].dt.year
+# tc_track['YEAR_end'] = tc_track['ISOTIME_end'].dt.year
 
-#print(tc_track.columns)
-#print(tc_track.head())
+# # filter to only columns we need
+# tc_track = tc_track[['TID', 'LON_start', 'LAT_start', 'LON_end', 'LAT_end', 'YEAR_start', 'YEAR_end', 'MSLP_start', 'MSLP_end']]
 
-# join sub basin name for starting and ending points
-start_gdf = gpd.GeoDataFrame(
-    tc_track,
-    geometry=gpd.points_from_xy(
-        tc_track.LON_start,
-        tc_track.LAT_start
-    ),
-    crs=sub_basins.crs
-)
+# #print(tc_track.columns)
+# #print(tc_track.head())
 
-end_gdf = gpd.GeoDataFrame(
-    tc_track,
-    geometry=gpd.points_from_xy(
-        tc_track.LON_end,
-        tc_track.LAT_end
-    ),
-    crs=sub_basins.crs
-)
+# # join sub basin name for starting and ending points
+# start_gdf = gpd.GeoDataFrame(
+#     tc_track,
+#     geometry=gpd.points_from_xy(
+#         tc_track.LON_start,
+#         tc_track.LAT_start
+#     ),
+#     crs=sub_basins.crs
+# )
 
-start_join = gpd.sjoin(
-    start_gdf,
-    sub_basins[['sub_basin_name', 'geometry']],
-    how='left',
-    predicate='within'
-)
+# end_gdf = gpd.GeoDataFrame(
+#     tc_track,
+#     geometry=gpd.points_from_xy(
+#         tc_track.LON_end,
+#         tc_track.LAT_end
+#     ),
+#     crs=sub_basins.crs
+# )
 
-end_join = gpd.sjoin(
-    end_gdf,
-    sub_basins[['sub_basin_name', 'geometry']],
-    how='left',
-    predicate='within'
-)
+# start_join = gpd.sjoin(
+#     start_gdf,
+#     sub_basins[['sub_basin_name', 'geometry']],
+#     how='left',
+#     predicate='within'
+# )
 
-tc_track['sub_basin_start'] = start_join['sub_basin_name']
-tc_track['sub_basin_end'] = end_join['sub_basin_name']
+# end_join = gpd.sjoin(
+#     end_gdf,
+#     sub_basins[['sub_basin_name', 'geometry']],
+#     how='left',
+#     predicate='within'
+# )
 
-#print(tc_track.head())
-#print(tc_track.shape)
+# tc_track['sub_basin_start'] = start_join['sub_basin_name']
+# tc_track['sub_basin_end'] = end_join['sub_basin_name']
 
-# save table
-#tc_track.to_csv("datasets/SyCLoPS/tc_MSLP_subbasin_table_withYear.csv", index = False)
+# #print(tc_track.head())
+# #print(tc_track.shape)
+
+# # save table
+# #tc_track.to_csv("datasets/SyCLoPS/tc_MSLP_subbasin_table_withYear.csv", index = False)
 
 ###############################################################################################################################
 
@@ -284,16 +281,101 @@ tc_track['sub_basin_end'] = end_join['sub_basin_name']
 
 #################################################################################################################
 
-# MSLP anomaly calc
+# # MSLP anomaly calc
 
-#filter to North Atlantic
-# filter points
+# #filter to North Atlantic
+# # filter points
+# points = gpd.GeoDataFrame(
+#     dftc_node, 
+#     geometry = gpd.points_from_xy(dftc_node.LON, dftc_node.LAT),
+#     crs = "EPSG:4326"
+# )
+
+# filtered = gpd.sjoin(
+#     points,
+#     basins[basins["basin name"] == "N Atlantic"],
+#     how = "inner",
+#     predicate = "within"
+# )
+
+# #convert LON to 180 coordinates
+# filtered.loc[:, 'LON_180'] = filtered['LON'].where(
+#     filtered['LON'] <= 180,
+#     filtered['LON'] - 360
+# )
+
+# # agg up to 4deg grid spacing
+# filtered['LAT_4'] = np.floor(filtered['LAT'] / 4) * 4
+# filtered['LON_4'] = np.floor(filtered['LON_180'] / 4) * 4
+
+# # get time components for anom calc
+# filtered['time'] = pd.to_datetime(filtered['ISOTIME'])
+# filtered['month'] = filtered['time'].dt.month
+# filtered['hour'] = filtered['time'].dt.hour
+
+# # calc MSLP anom
+# clim = (
+#     filtered.groupby(['LAT_4','LON_4','month'])['MSLP']
+#     .mean()
+#     .rename('clim_mslp')
+# )
+# filtered = filtered.join(clim, on=['LAT_4','LON_4','month'])
+# filtered['mslp_anom'] = filtered['MSLP'] - filtered['clim_mslp']
+
+# # plot MSLP anom mean over all years (1940-2024)
+# grid_mean = (
+#     filtered
+#     .groupby(['LAT_4', 'LON_4'])['mslp_anom']
+#     .mean()
+#     .reset_index()
+# )
+
+# # pivot for plotting
+# pivot = grid_mean.pivot(
+#     index='LAT_4',
+#     columns='LON_4',
+#     values='mslp_anom'
+# )
+
+# # plot
+# fig = plt.figure(figsize=(12,6))
+# ax = plt.axes(projection=ccrs.PlateCarree())
+
+# mesh = ax.pcolormesh(
+#     pivot.columns,
+#     pivot.index,
+#     pivot.values,
+#     cmap='RdBu_r',
+#     shading='auto',
+#     transform=ccrs.PlateCarree()
+# )
+
+# ax.coastlines()
+# #ax.add_feature(cfeature.BORDERS, linewidth=0.5)
+
+# plt.colorbar(mesh, label='Mean MSLP Anomaly (Pa)')
+# plt.title('Mean MSLP Anomaly (4deg) in North Atlantic')
+# plt.savefig('images/data_viz/tc_mslp_anom_NAtl.png')
+# plt.show()
+
+#################################################################################################################
+
+# get MSLP timeseries per sub basin across entire track, not origin node
+
+# shift LON to 180 scale
+dftc_node['LON_180'] = ((dftc_node['LON'] + 180) % 360) - 180
+
+# filter to columns we need
+tc = dftc_node[['TID', 'LON_180', 'LAT', 'ISOTIME', 'MSLP']]
+
+# create points
 points = gpd.GeoDataFrame(
-    dftc_node, 
-    geometry = gpd.points_from_xy(dftc_node.LON, dftc_node.LAT),
+    tc, 
+    geometry = gpd.points_from_xy(tc.LON_180, tc.LAT),
     crs = "EPSG:4326"
 )
 
+# filter to North Atlantic
 filtered = gpd.sjoin(
     points,
     basins[basins["basin name"] == "N Atlantic"],
@@ -301,62 +383,29 @@ filtered = gpd.sjoin(
     predicate = "within"
 )
 
-#convert LON to 180 coordinates
-filtered.loc[:, 'LON_180'] = filtered['LON'].where(
-    filtered['LON'] <= 180,
-    filtered['LON'] - 360
+# drop index_right column before sub basin join
+filtered = filtered[['TID', 'LON_180', 'LAT', 'ISOTIME', 'MSLP', 'geometry']]
+
+# join sub basins
+tc_sb = gpd.sjoin(
+    filtered,
+    sub_basins[['sub_basin_name', 'geometry']],
+    how='left',
+    predicate='within'
 )
 
-# agg up to 4deg grid spacing
-filtered['LAT_4'] = np.floor(filtered['LAT'] / 4) * 4
-filtered['LON_4'] = np.floor(filtered['LON_180'] / 4) * 4
+# add year column
+tc_sb['year'] = tc_sb['ISOTIME'].dt.year
 
-# get time components for anom calc
-filtered['time'] = pd.to_datetime(filtered['ISOTIME'])
-filtered['month'] = filtered['time'].dt.month
-filtered['hour'] = filtered['time'].dt.hour
-
-# calc MSLP anom
-clim = (
-    filtered.groupby(['LAT_4','LON_4','month'])['MSLP']
-    .mean()
-    .rename('clim_mslp')
-)
-filtered = filtered.join(clim, on=['LAT_4','LON_4','month'])
-filtered['mslp_anom'] = filtered['MSLP'] - filtered['clim_mslp']
-
-# plot MSLP anom mean over all years (1940-2024)
-grid_mean = (
-    filtered
-    .groupby(['LAT_4', 'LON_4'])['mslp_anom']
+# pivot by year and subbasin to get mean MSLP
+mslp_annual = (
+    tc_sb
+    .groupby(['year', 'sub_basin_name'])['MSLP']
     .mean()
     .reset_index()
 )
 
-# pivot for plotting
-pivot = grid_mean.pivot(
-    index='LAT_4',
-    columns='LON_4',
-    values='mslp_anom'
-)
+print(mslp_annual)
 
-# plot
-fig = plt.figure(figsize=(12,6))
-ax = plt.axes(projection=ccrs.PlateCarree())
-
-mesh = ax.pcolormesh(
-    pivot.columns,
-    pivot.index,
-    pivot.values,
-    cmap='RdBu_r',
-    shading='auto',
-    transform=ccrs.PlateCarree()
-)
-
-ax.coastlines()
-#ax.add_feature(cfeature.BORDERS, linewidth=0.5)
-
-plt.colorbar(mesh, label='Mean MSLP Anomaly (Pa)')
-plt.title('Mean MSLP Anomaly (4deg) in North Atlantic')
-plt.savefig('images/data_viz/tc_mslp_anom_NAtl.png')
-plt.show()
+# save to csv
+mslp_annual.to_csv("datasets/MSLP/mslp_mean_timeseries_perYr_perSB_SYCLOPS.csv")
