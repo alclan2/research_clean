@@ -54,7 +54,7 @@ ike_sum = pd.read_csv("datasets/IKE/IKE_TC+TD_accum_timeseries.png")
 # load MSLP mean (from SYCLOPS - dependent variable)
 mslp_y = pd.read_csv("datasets/MSLP/mslp_mean_timeseries_perYr_perSB_SYCLOPS.csv")
 
-print(mslp_y)
+# print(mslp_y)
 
 # reformat origins, rh, and IKE tables
 origins = ds.melt(
@@ -181,14 +181,14 @@ for basin, group in merged.groupby("sub_basin_name"):
 
     # remove rows with missing values
     group = group.dropna(
-        subset=["ike_mean"] + predictors
+        subset=["mslp_mean_y"] + predictors
     )
 
     # skip if too few observations or no variation in response
     if len(group) < 10:
         continue
 
-    if group["ike_mean"].nunique() < 2:
+    if group["mslp_mean_y"].nunique() < 2:
         continue
 
     # standardize predictors
@@ -198,14 +198,14 @@ for basin, group in merged.groupby("sub_basin_name"):
     group[predictors] = scaler.fit_transform(group[predictors])
 
     model = smf.ols(
-        "ike_mean ~ sst_mean + mslp_mean",
+        "mslp_mean_y ~ sst_mean + shear + gpi",
         data=group
     ).fit()
 
     results[basin] = model
 
     predictions[basin] = pd.DataFrame({
-        "Actual": group["ike_mean"],
+        "Actual": group["mslp_mean_y"],
         "Predicted": model.fittedvalues
 })  
 
@@ -240,68 +240,68 @@ coef_df = pd.DataFrame(coef_results)
 print(coef_df)
 
 # save coef table as csv
-coef_df.to_csv("datasets/data_viz/MLR/IKE/MLR_ikeMean_vs_sstMean+mslpMean_coef_table.csv")
+coef_df.to_csv("datasets/data_viz/MLR/intensity/MLR_mslpMeanY_vs_sstMean+shear+gpi_coef_table.csv")
 
 ######################################################################################################
 
-# # # actual v predicted for TWO variables
-# choose sub-basin
-sb = "Subtropical Atlantic"
+# # # # actual v predicted for TWO variables
+# # choose sub-basin
+# sb = "Subtropical Atlantic"
 
-model = results[sb]
+# model = results[sb]
 
-# get data for this basin
-group = merged[merged["sub_basin_name"] == sb].dropna(
-    subset=["ike_mean"] + predictors
-).copy()
+# # get data for this basin
+# group = merged[merged["sub_basin_name"] == sb].dropna(
+#     subset=["ike_mean"] + predictors
+# ).copy()
 
-# standardize predictors exactly as during model fitting
-scaler = StandardScaler()
-group[predictors] = scaler.fit_transform(group[predictors])
+# # standardize predictors exactly as during model fitting
+# scaler = StandardScaler()
+# group[predictors] = scaler.fit_transform(group[predictors])
 
-# predict origin node counts using BOTH predictors
-group["Predicted"] = model.predict(group)
+# # predict origin node counts using BOTH predictors
+# group["Predicted"] = model.predict(group)
 
-# put back in chronological order
-group = group.sort_values("year")
+# # put back in chronological order
+# group = group.sort_values("year")
 
-# plot
-fig, ax = plt.subplots(figsize=(14,6))
+# # plot
+# fig, ax = plt.subplots(figsize=(14,6))
 
-# observed counts
-ax.plot(
-    group["year"],
-    group["ike_mean"],
-    color="black",
-    linewidth=2,
-    marker="o",
-    label="Observed IKE"
-)
+# # observed counts
+# ax.plot(
+#     group["year"],
+#     group["ike_mean"],
+#     color="black",
+#     linewidth=2,
+#     marker="o",
+#     label="Observed IKE"
+# )
 
-# predicted counts
-ax.plot(
-    group["year"],
-    group["Predicted"],
-    color="tab:blue",
-    linewidth=2,
-    linestyle="--",
-    marker="s",
-    label="Predicted IKE"
-)
+# # predicted counts
+# ax.plot(
+#     group["year"],
+#     group["Predicted"],
+#     color="tab:blue",
+#     linewidth=2,
+#     linestyle="--",
+#     marker="s",
+#     label="Predicted IKE"
+# )
 
-ax.set_xlabel("Year")
-ax.set_ylabel("Mean IKE (TJ)")
+# ax.set_xlabel("Year")
+# ax.set_ylabel("Mean IKE (TJ)")
 
-ax.set_title(
-    f"{sb}\nObserved vs. Predicted IKE\n"
-    f"Multiple Linear Regression ($R^2$ = {model.rsquared:.2f})"
-)
+# ax.set_title(
+#     f"{sb}\nObserved vs. Predicted IKE\n"
+#     f"Multiple Linear Regression ($R^2$ = {model.rsquared:.2f})"
+# )
 
-ax.legend()
+# ax.legend()
 
-plt.tight_layout()
-# plt.savefig(f"images/data_viz/MLR/IKE/actual_v_predicted_ikeMean_sstMean+shear+mslpMean_{sb}.png")
-# plt.show()
+# plt.tight_layout()
+# # plt.savefig(f"images/data_viz/MLR/IKE/actual_v_predicted_ikeMean_sstMean+shear+mslpMean_{sb}.png")
+# # plt.show()
 
 ######################################################################################################
 

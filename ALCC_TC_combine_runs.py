@@ -13,7 +13,7 @@ import tarfile
 TC = 'TC.2'
 run1 = '001'
 run2 = '002'
-subject = 'density'
+subject = 'mslp'
 
 # read in post python processing ALCC files and average across runs 001 and 002 per mode
 ds_nn_1 = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{run1}/{subject}/ALCC_{TC}_{run1}_output_{subject}_perYr_wSubbasin_nn")
@@ -36,8 +36,23 @@ ds_pn_2 = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{run2}/{subjec
 ds_po_2 = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{run2}/{subject}/ALCC_{TC}_{run2}_output_{subject}_perYr_wSubbasin_po")
 ds_pp_2 = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{run2}/{subject}/ALCC_{TC}_{run2}_output_{subject}_perYr_wSubbasin_pp")
 
-# create 5deg lat/lon bins
-def bin_counts(df):
+# # COUNT OF TCS; create 5deg lat/lon bins 
+# def bin_counts(df):
+#     df = df.copy()
+
+#     df["lat_bin"] = np.floor(df["lat"] / 5) * 5
+#     df["lon_bin"] = np.floor(df["lon_180"] / 5) * 5
+
+#     return (
+#         df.groupby(
+#             ["sub_basin_name", "year", "lat_bin", "lon_bin"]
+#         )
+#         .size()
+#         .reset_index(name="count")
+#     )
+
+# MSLP avg; create 5deg lat/lon bins
+def bin_slp(df):
     df = df.copy()
 
     df["lat_bin"] = np.floor(df["lat"] / 5) * 5
@@ -45,168 +60,171 @@ def bin_counts(df):
 
     return (
         df.groupby(
-            ["sub_basin_start", "year", "lat_bin", "lon_bin"]
-        )
-        .size()
-        .reset_index(name="count")
+            ["sub_basin_name", "year", "lat_bin", "lon_bin"]
+        )["slp"]
+        .mean()
+        .div(100)
+        .reset_index(name="mean_slp")
     )
 
 # create new datasets for counts
-counts1_nn = bin_counts(ds_nn_1)
-counts2_nn = bin_counts(ds_nn_2)
-counts1_no = bin_counts(ds_no_1)
-counts2_no = bin_counts(ds_no_2)
-counts1_np = bin_counts(ds_np_1)
-counts2_np = bin_counts(ds_np_2)
-counts1_on = bin_counts(ds_on_1)
-counts2_on = bin_counts(ds_on_2)
-counts1_oo = bin_counts(ds_oo_1)
-counts2_oo = bin_counts(ds_oo_2)
-counts1_op = bin_counts(ds_op_1)
-counts2_op = bin_counts(ds_op_2)
-counts1_pn = bin_counts(ds_pn_1)
-counts2_pn = bin_counts(ds_pn_2)
-counts1_po = bin_counts(ds_po_1)
-counts2_po = bin_counts(ds_po_2)
-counts1_pp = bin_counts(ds_pp_1)
-counts2_pp = bin_counts(ds_pp_2)
+slp1_nn = bin_slp(ds_nn_1)
+slp2_nn = bin_slp(ds_nn_2)
+slp1_no = bin_slp(ds_no_1)
+slp2_no = bin_slp(ds_no_2)
+slp1_np = bin_slp(ds_np_1)
+slp2_np = bin_slp(ds_np_2)
+slp1_on = bin_slp(ds_on_1)
+slp2_on = bin_slp(ds_on_2)
+slp1_oo = bin_slp(ds_oo_1)
+slp2_oo = bin_slp(ds_oo_2)
+slp1_op = bin_slp(ds_op_1)
+slp2_op = bin_slp(ds_op_2)
+slp1_pn = bin_slp(ds_pn_1)
+slp2_pn = bin_slp(ds_pn_2)
+slp1_po = bin_slp(ds_po_1)
+slp2_po = bin_slp(ds_po_2)
+slp1_pp = bin_slp(ds_pp_1)
+slp2_pp = bin_slp(ds_pp_2)
+
+# print(slp1_nn)
 
 # nn
-counts_nn = (
-    counts1_nn.merge(
-        counts2_nn,
-        on=["sub_basin_start", "year", "lat_bin", "lon_bin"],
+slp_nn = (
+    slp1_nn.merge(
+        slp2_nn,
+        on=["sub_basin_name", "year", "lat_bin", "lon_bin"],
         how="outer",
         suffixes=("_1", "_2")
     )
-    .fillna(0)
+    # .fillna(0)
 )
-counts_nn["mean_count"] = (counts_nn["count_1"] + counts_nn["count_2"]) / 2
+slp_nn["mslp"] = slp_nn[["mean_slp_1", "mean_slp_2"]].mean(axis=1)
 
 # no
-counts_no = (
-    counts1_no.merge(
-        counts2_no,
-        on=["sub_basin_start", "year", "lat_bin", "lon_bin"],
+slp_no = (
+    slp1_no.merge(
+        slp2_no,
+        on=["sub_basin_name", "year", "lat_bin", "lon_bin"],
         how="outer",
         suffixes=("_1", "_2")
     )
-    .fillna(0)
+    # .fillna(0)
 )
-counts_no["mean_count"] = (counts_no["count_1"] + counts_no["count_2"]) / 2
+slp_no["mslp"] = slp_no[["mean_slp_1", "mean_slp_2"]].mean(axis=1)
 
 # np
-counts_np = (
-    counts1_np.merge(
-        counts2_np,
-        on=["sub_basin_start", "year", "lat_bin", "lon_bin"],
+slp_np = (
+    slp1_np.merge(
+        slp2_np,
+        on=["sub_basin_name", "year", "lat_bin", "lon_bin"],
         how="outer",
         suffixes=("_1", "_2")
     )
-    .fillna(0)
+    # .fillna(0)
 )
-counts_np["mean_count"] = (counts_np["count_1"] + counts_np["count_2"]) / 2
-
-# on
-counts_on = (
-    counts1_on.merge(
-        counts2_on,
-        on=["sub_basin_start", "year", "lat_bin", "lon_bin"],
-        how="outer",
-        suffixes=("_1", "_2")
-    )
-    .fillna(0)
-)
-counts_on["mean_count"] = (counts_on["count_1"] + counts_on["count_2"]) / 2
+slp_np["mslp"] = slp_np[["mean_slp_1", "mean_slp_2"]].mean(axis=1)
 
 # oo
-counts_oo = (
-    counts1_oo.merge(
-        counts2_oo,
-        on=["sub_basin_start", "year", "lat_bin", "lon_bin"],
+slp_oo = (
+    slp1_oo.merge(
+        slp2_oo,
+        on=["sub_basin_name", "year", "lat_bin", "lon_bin"],
         how="outer",
         suffixes=("_1", "_2")
     )
-    .fillna(0)
+    # .fillna(0)
 )
-counts_oo["mean_count"] = (counts_oo["count_1"] + counts_oo["count_2"]) / 2
+slp_oo["mslp"] = slp_oo[["mean_slp_1", "mean_slp_2"]].mean(axis=1)
+
+# on
+slp_on = (
+    slp1_on.merge(
+        slp2_on,
+        on=["sub_basin_name", "year", "lat_bin", "lon_bin"],
+        how="outer",
+        suffixes=("_1", "_2")
+    )
+    # .fillna(0)
+)
+slp_on["mslp"] = slp_on[["mean_slp_1", "mean_slp_2"]].mean(axis=1)
 
 # op
-counts_op = (
-    counts1_op.merge(
-        counts2_op,
-        on=["sub_basin_start", "year", "lat_bin", "lon_bin"],
+slp_op = (
+    slp1_op.merge(
+        slp2_op,
+        on=["sub_basin_name", "year", "lat_bin", "lon_bin"],
         how="outer",
         suffixes=("_1", "_2")
     )
-    .fillna(0)
+    # .fillna(0)
 )
-counts_op["mean_count"] = (counts_op["count_1"] + counts_op["count_2"]) / 2
-
-# pn
-counts_pn = (
-    counts1_pn.merge(
-        counts2_pn,
-        on=["sub_basin_start", "year", "lat_bin", "lon_bin"],
-        how="outer",
-        suffixes=("_1", "_2")
-    )
-    .fillna(0)
-)
-counts_pn["mean_count"] = (counts_pn["count_1"] + counts_pn["count_2"]) / 2
-
-# po
-counts_po = (
-    counts1_po.merge(
-        counts2_po,
-        on=["sub_basin_start", "year", "lat_bin", "lon_bin"],
-        how="outer",
-        suffixes=("_1", "_2")
-    )
-    .fillna(0)
-)
-counts_po["mean_count"] = (counts_po["count_1"] + counts_po["count_2"]) / 2
+slp_op["mslp"] = slp_op[["mean_slp_1", "mean_slp_2"]].mean(axis=1)
 
 # pp
-counts_pp = (
-    counts1_pp.merge(
-        counts2_pp,
-        on=["sub_basin_start", "year", "lat_bin", "lon_bin"],
+slp_pp = (
+    slp1_pp.merge(
+        slp2_pp,
+        on=["sub_basin_name", "year", "lat_bin", "lon_bin"],
         how="outer",
         suffixes=("_1", "_2")
     )
-    .fillna(0)
+    # .fillna(0)
 )
-counts_pp["mean_count"] = (counts_pp["count_1"] + counts_pp["count_2"]) / 2
+slp_pp["mslp"] = slp_pp[["mean_slp_1", "mean_slp_2"]].mean(axis=1)
+
+# po
+slp_po = (
+    slp1_po.merge(
+        slp2_po,
+        on=["sub_basin_name", "year", "lat_bin", "lon_bin"],
+        how="outer",
+        suffixes=("_1", "_2")
+    )
+    # .fillna(0)
+)
+slp_po["mslp"] = slp_po[["mean_slp_1", "mean_slp_2"]].mean(axis=1)
+
+# pn
+slp_pn = (
+    slp1_pn.merge(
+        slp2_pn,
+        on=["sub_basin_name", "year", "lat_bin", "lon_bin"],
+        how="outer",
+        suffixes=("_1", "_2")
+    )
+    # .fillna(0)
+)
+slp_pn["mslp"] = slp_pn[["mean_slp_1", "mean_slp_2"]].mean(axis=1)
 
 # add mode column
-counts_nn['mode'] = 'nn'
-counts_no['mode'] = 'no'
-counts_np['mode'] = 'np'
-counts_on['mode'] = 'on'
-counts_oo['mode'] = 'oo'
-counts_op['mode'] = 'op'
-counts_pn['mode'] = 'pn'
-counts_po['mode'] = 'po'
-counts_pp['mode'] = 'pp'
+slp_nn['mode'] = 'nn'
+slp_no['mode'] = 'no'
+slp_np['mode'] = 'np'
+slp_on['mode'] = 'on'
+slp_oo['mode'] = 'oo'
+slp_op['mode'] = 'op'
+slp_pn['mode'] = 'pn'
+slp_po['mode'] = 'po'
+slp_pp['mode'] = 'pp'
 
 # concat into one table
-all_counts = pd.concat([
-    counts_nn,
-    counts_no,
-    counts_np,
-    counts_on,
-    counts_oo,
-    counts_op,
-    counts_pn,
-    counts_po,
-    counts_pp,
+all_slp = pd.concat([
+    slp_nn,
+    slp_no,
+    slp_np,
+    slp_on,
+    slp_oo,
+    slp_op,
+    slp_pn,
+    slp_po,
+    slp_pp,
 ], ignore_index=True)
 
-print(all_counts)
+print(all_slp)
 
 # save to csv
-# all_counts.to_csv(f"datasets/ALCC/post_python_processing/{TC}/{TC}_all_counts_{subject}_avg_table.csv")
+all_slp.to_csv(f"datasets/ALCC/post_python_processing/{TC}/{TC}_all_mslp_{subject}_avg_table.csv")
 
 ################################################################################################
 

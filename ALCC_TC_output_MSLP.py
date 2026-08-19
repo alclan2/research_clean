@@ -10,8 +10,8 @@ import numpy as np
 import tarfile
 
 # toggle
-TC = 'TC.0'
-run = '001'
+TC = 'TC.2'
+run = '002'
 
 ## read in csv files which compiles data and takes third entry from each individual DN file
 # nn mode (negative ENSO (El Nino), negative North Pacific mode)
@@ -230,9 +230,6 @@ ds_filt = gpd.sjoin(
 # filter to only columns we need
 ds_filt = ds_filt[['track_id', 'year', 'lon_180', 'lat', 'mode', 'geometry', 'slp', 'wind']]
 
-# # print(og_filt.columns)
-# # #print(tc_track.head())
-
 # join sub basin name for starting and ending points
 ds_gdf = gpd.GeoDataFrame(
      ds_filt,
@@ -250,12 +247,10 @@ ds_join = gpd.sjoin(
      predicate='within'
 )
 
-# ds_filt['sub_basin_start'] = ds_join['sub_basin_name']
+print(ds_join)
 
-print(ds_filt)
-
-# # save table
-# # og_filt.to_csv(f"datasets/ALCC/post_python_processing/{TC}/{run}/ALCC_{TC}_{run}_output_origins_perYr_wSubbasin_{mode}")
+# save table
+ds_join.to_csv(f"datasets/ALCC/post_python_processing/{TC}/{run}/ALCC_{TC}_{run}_output_mslp_perYr_wSubbasin_{mode}")
 
 # #####################################################################################################################
 
