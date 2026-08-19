@@ -14,38 +14,31 @@ import cartopy.mpl.ticker as cticker
 import matplotlib.patheffects as pe
 
 # TC version
-TC = 'TC.2'
+TC = 'TC.0'
 
 # load dataset
 df = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{TC}_all_counts_density_avg_table.csv")
 
 # print(df)
 
-# filter only oo mode
-df_oo = df[df['mode'] == 'oo'].copy()
+# # filter only oo mode
+# df_oo = df[df['mode'] == 'oo'].copy()
 
-# sum all 5deg bins within each sub-basin for each year
-annual_subbasin = (
-    df_oo
-    .groupby(['year', 'sub_basin_start'])['mean_count']
-    .sum()
-    .reset_index(name='annual_TCs')
-)
+# # sum all 5deg bins within each sub-basin for each year
+# annual_subbasin = (
+#     df_oo
+#     .groupby(['year', 'sub_basin_start'])['mean_count']
+#     .sum()
+#     .reset_index(name='annual_TCs')
+# )
 
-# print(annual_subbasin)
-
-# average the annual sub-basin totals across all years
-density = (
-    annual_subbasin
-    .groupby('sub_basin_start')['annual_TCs']
-    .mean()
-    .reset_index(name='TCs_per_year')
-)
-
-# print(df_oo.groupby('sub_basin_start')['year'].agg(['min', 'max', 'nunique']))
-# print(df_oo.groupby(['sub_basin_start', 'year']).size().unstack(fill_value=0))
-
-# print(density)
+# # average the annual sub-basin totals across all years
+# density = (
+#     annual_subbasin
+#     .groupby('sub_basin_start')['annual_TCs']
+#     .mean()
+#     .reset_index(name='TCs_per_year')
+# )
 
 ################################################################################
 # set up sub basins
@@ -158,7 +151,6 @@ def calculate_density(data):
 
 # calculate all mode density maps
 density_maps = {}
-
 for mode in modes:
     df_mode = df[df['mode'] == mode]
     density_maps[mode] = calculate_density(df_mode)
@@ -166,34 +158,42 @@ for mode in modes:
 # reference oo density
 oo_density = density_maps['oo']
 
-# print(oo_density)
-
-# calc anomalies relative to oo
-anomaly_maps = {}
+# calculate relative change (%) relative to oo
+relative_change_maps = {}
 for mode in modes:
     if mode != 'oo':
-        mode_density = density_maps[mode].reindex(oo_density.index).fillna(0)
-        anomaly_maps[mode] = mode_density - oo_density
+        mode_density = (
+            density_maps[mode]
+            .reindex(oo_density.index)
+            .fillna(0)
+        )
+
+        baseline = oo_density.replace(0, np.nan)
+
+        relative_change_maps[mode] = (
+            (mode_density - baseline) / baseline
+        ) * 100
 
 # plot anomalies
 density_cmap = plt.cm.plasma_r.copy()
 density_cmap.set_under('lightgray')
 anom_cmap = plt.cm.RdBu
 
-# make symmetric anomaly scale
-max_anom = max(
+# make symmetric relative-change scale
+max_change = max(
     abs(np.nanmin([
-        x.values.min() for x in anomaly_maps.values()
+        x.values.min() for x in relative_change_maps.values()
     ])),
     abs(np.nanmax([
-        x.values.max() for x in anomaly_maps.values()
+        x.values.max() for x in relative_change_maps.values()
     ]))
 )
 
-anom_norm = colors.TwoSlopeNorm(
-    vmin=-max_anom,
+# fixed relative-change scale
+change_norm = colors.TwoSlopeNorm(
+    vmin=-100,
     vcenter=0,
-    vmax=max_anom
+    vmax=100
 )
 
 # density normalization
@@ -267,10 +267,10 @@ for i, (ax, mode) in enumerate(zip(axes, plot_order)):
         )
 
     else:
-        values = anomaly_maps[mode]
+        values = relative_change_maps[mode]
 
         cmap = anom_cmap
-        norm = anom_norm
+        norm = change_norm
 
         ax.set_title(
             f"{mode}",
@@ -338,8 +338,8 @@ for i, (ax, mode) in enumerate(zip(axes, plot_order)):
         )
 
     else:
-        anom_mesh = plt.cm.ScalarMappable(
-            norm=anom_norm,
+        change_mesh = plt.cm.ScalarMappable(
+            norm=change_norm,
             cmap=anom_cmap
         )
 
@@ -357,11 +357,12 @@ cb1.set_label("TC Density (TCs per year)")
 cax2 = fig.add_axes([0.55, 0.08, 0.3, 0.025])
 
 cb2 = fig.colorbar(
-    anom_mesh,
+    change_mesh,
     cax=cax2,
-    orientation='horizontal'
+    orientation='horizontal',
+    ticks=[-100, -75, -50, -25, 0, 25, 50, 75, 100]
 )
-cb2.set_label("Density anomaly (reference mode oo)")
+cb2.set_label("Relative change from reference mode oo (%)")
 
 fig.subplots_adjust(
     left=0.05,
@@ -373,61 +374,20 @@ fig.subplots_adjust(
 )
 
 fig.suptitle(
-    f"TC Density Anomalies ({TC})",
+    f"Relative TC Density Change ({TC})",
     fontsize=16,
     y=0.98
 )
 
 # plt.tight_layout()
-# plt.savefig(f"images/data_viz/alcc/{TC}/runs_averaged/{TC}_density_anomaly_sbTotal_grid.png")
+plt.savefig(f"images/data_viz/alcc/{TC}/runs_averaged/{TC}_density_relativeChange_sbTotal_grid.png")
 plt.show()
 
-# ##############################################################################################
-
-# # # coordinates
-# # lons = heatmap_data.columns.values
-# # lats = heatmap_data.index.values
-# # values = heatmap_data.values
-
-# # # custom colormap
-# # base_cmap = plt.cm.plasma_r
-# # cmap_colors = base_cmap(np.linspace(0, 1, 256))
-# # cmap_colors[0] = [1, 1, 1, 1]  # zero = white
-# # custom_cmap = colors.ListedColormap(cmap_colors)
-
-# # # map plot
-# # fig, ax = plt.subplots(
-# #     figsize=(10, 6),
-# #     subplot_kw={"projection": ccrs.PlateCarree()}
-# # )
-
-# # # North Atlantic bounds
-# # ax.set_extent([-100, 20, 0, 70], crs=ccrs.PlateCarree())
-
-# # ax.coastlines()
-
-# # mesh = ax.pcolormesh(
-# #     lons,
-# #     lats,
-# #     values,
-# #     cmap=custom_cmap,
-# #     shading='auto',
-# #     transform=ccrs.PlateCarree()
-# # )
-
-# # cbar = plt.colorbar(mesh, ax=ax, orientation='vertical')
-# # cbar.set_label('oo-mode TCs per year')
-
-# # # ax.set_xlabel('Longitude')
-# # # ax.set_ylabel('Latitude')
-
-# # plt.show()
-
-
-
-
-
-
-
-# print(df_oo.columns.tolist())
-# print(df_oo.head(50).to_string())
+# check
+for mode, values in relative_change_maps.items():
+    print(
+        mode,
+        "min =", values.min(),
+        "max =", values.max(),
+        ">|50| =", (abs(values) > 50).sum()
+    )
