@@ -169,7 +169,7 @@ merged = merged[(merged["year"] >= 1940) & (merged["year"] <= 2025)]
 ########################################################################################################################
 
 # standardize variables for MLR
-predictors = ['sst_mean', 'shear', 'mslp_mean', 'rh600', 'gpi']
+predictors = ['sst_mean', 'shear']
 
 # save MLR results
 results = {}
@@ -198,7 +198,7 @@ for basin, group in merged.groupby("sub_basin_name"):
     group[predictors] = scaler.fit_transform(group[predictors])
 
     model = smf.ols(
-        "mslp_mean_y ~ sst_mean + shear + gpi",
+        "mslp_mean_y ~ sst_mean + shear",
         data=group
     ).fit()
 
@@ -237,71 +237,74 @@ for basin, model in results.items():
 
 coef_df = pd.DataFrame(coef_results)
 
-print(coef_df)
+# choose sub-basin
+sb = "Subtropical Atlantic"
+
+print(coef_df[coef_df['sub_basin']==sb])
 
 # save coef table as csv
-coef_df.to_csv("datasets/data_viz/MLR/intensity/MLR_mslpMeanY_vs_sstMean+shear+gpi_coef_table.csv")
+coef_df.to_csv(f"datasets/data_viz/MLR/intensity/v2_runs/MLR_mslpMeanY_vs_sstMean+shear_coef_table_{sb}.csv")
 
 ######################################################################################################
 
-# # # # actual v predicted for TWO variables
-# # choose sub-basin
-# sb = "Subtropical Atlantic"
+# # # actual v predicted for TWO variables
+# choose sub-basin
+# sb = "Caribbean"
 
-# model = results[sb]
+model = results[sb]
 
-# # get data for this basin
-# group = merged[merged["sub_basin_name"] == sb].dropna(
-#     subset=["ike_mean"] + predictors
-# ).copy()
+# get data for this basin
+group = merged[merged["sub_basin_name"] == sb].dropna(
+    subset=["mslp_mean_y"] + predictors
+).copy()
 
-# # standardize predictors exactly as during model fitting
-# scaler = StandardScaler()
-# group[predictors] = scaler.fit_transform(group[predictors])
+# standardize predictors exactly as during model fitting
+scaler = StandardScaler()
+group[predictors] = scaler.fit_transform(group[predictors])
 
-# # predict origin node counts using BOTH predictors
-# group["Predicted"] = model.predict(group)
+# predict origin node counts using BOTH predictors
+group["Predicted"] = model.predict(group)
 
-# # put back in chronological order
-# group = group.sort_values("year")
+# put back in chronological order
+group = group.sort_values("year")
 
-# # plot
-# fig, ax = plt.subplots(figsize=(14,6))
+# plot
+fig, ax = plt.subplots(figsize=(14,6))
 
-# # observed counts
-# ax.plot(
-#     group["year"],
-#     group["ike_mean"],
-#     color="black",
-#     linewidth=2,
-#     marker="o",
-#     label="Observed IKE"
-# )
+# observed counts
+ax.plot(
+    group["year"],
+    group["mslp_mean_y"],
+    color="black",
+    linewidth=2,
+    marker="o",
+    label="Observed MSLP (Pa)"
+)
 
-# # predicted counts
-# ax.plot(
-#     group["year"],
-#     group["Predicted"],
-#     color="tab:blue",
-#     linewidth=2,
-#     linestyle="--",
-#     marker="s",
-#     label="Predicted IKE"
-# )
+# predicted counts
+ax.plot(
+    group["year"],
+    group["Predicted"],
+    color="tab:blue",
+    linewidth=2,
+    linestyle="--",
+    marker="s",
+    label="Predicted MSLP (Pa)"
+)
 
-# ax.set_xlabel("Year")
-# ax.set_ylabel("Mean IKE (TJ)")
+ax.set_xlabel("Year")
+ax.set_ylabel("TC+TD Intensity")
 
-# ax.set_title(
-#     f"{sb}\nObserved vs. Predicted IKE\n"
-#     f"Multiple Linear Regression ($R^2$ = {model.rsquared:.2f})"
-# )
+ax.set_title(
+    f"{sb}\nObserved vs. Predicted TC+TD Intensity\n"
+    f"Multiple Linear Regression ($R^2$ = {model.rsquared:.2f})"
+)
 
-# ax.legend()
+ax.legend()
 
-# plt.tight_layout()
-# # plt.savefig(f"images/data_viz/MLR/IKE/actual_v_predicted_ikeMean_sstMean+shear+mslpMean_{sb}.png")
-# # plt.show()
+plt.tight_layout()
+plt.savefig(f"images/data_viz/MLR/intensity/v2_runs/actual_v_predicted_mslpMeanY_sstMean+shear_{sb}.png")
+plt.show()
 
 ######################################################################################################
 
@@ -439,10 +442,10 @@ vif_summary = pd.concat(vif_tables, ignore_index=True)
 # Optional: reorder columns
 vif_summary = vif_summary[["Basin", "Variable", "VIF"]]
 
-# print(vif_summary)
+print(vif_summary[vif_summary['Basin']==sb])
 
 # save to csv
-# vif_summary.to_csv("datasets/data_viz/MLR/VIF_shear_mslpAnom_sstMean_rh600.csv")
+vif_summary.to_csv(f"datasets/data_viz/MLR/intensity/v2_runs/VIF_mslpMeanY_vs_sstMean+shear_{sb}.csv")
 
 ########################################################################################################################
 
