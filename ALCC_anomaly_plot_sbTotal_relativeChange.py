@@ -380,14 +380,15 @@ fig.suptitle(
 )
 
 # plt.tight_layout()
-plt.savefig(f"images/data_viz/alcc/{TC}/runs_averaged/{TC}_density_relativeChange_sbTotal_grid.png")
-plt.show()
+# plt.savefig(f"images/data_viz/alcc/{TC}/runs_averaged/{TC}_density_relativeChange_sbTotal_grid.png")
+# plt.show()
 
-# check
-for mode, values in relative_change_maps.items():
-    print(
-        mode,
-        "min =", values.min(),
-        "max =", values.max(),
-        ">|50| =", (abs(values) > 50).sum()
-    )
+# # check
+# for mode, values in relative_change_maps.items():
+#     print(
+#         mode,
+#         "min =", values.min(),
+#         "max =", values.max(),
+#         ">|50| =", (abs(values) > 50).sum()
+#     )
+
