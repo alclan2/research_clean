@@ -14,10 +14,10 @@ import cartopy.mpl.ticker as cticker
 import matplotlib.patheffects as pe
 
 # TC version
-TC = 'TC.0'
+TC = 'TC.2'
 
 # load dataset
-df = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{TC}_all_counts_density_avg_table.csv")
+df = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{TC}_all_counts_origins_avg_table.csv")
 
 # print(df)
 
@@ -351,7 +351,7 @@ cb1 = fig.colorbar(
     cax=cax1,
     orientation='horizontal'
 )
-cb1.set_label("TC Density (TCs per year)")
+cb1.set_label("TC Origin Locations (origin nodes per year)")
 
 # anomaly colorbar
 cax2 = fig.add_axes([0.55, 0.08, 0.3, 0.025])
@@ -374,14 +374,14 @@ fig.subplots_adjust(
 )
 
 fig.suptitle(
-    f"Relative TC Density Change ({TC})",
+    f"Relative TC Origin Locations Change ({TC})",
     fontsize=16,
     y=0.98
 )
 
 # plt.tight_layout()
-# plt.savefig(f"images/data_viz/alcc/{TC}/runs_averaged/{TC}_density_relativeChange_sbTotal_grid.png")
-# plt.show()
+plt.savefig(f"images/data_viz/alcc/{TC}/runs_averaged/{TC}_origins_relativeChange_sbTotal_grid.png")
+plt.show()
 
 # # check
 # for mode, values in relative_change_maps.items():

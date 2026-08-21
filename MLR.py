@@ -169,7 +169,7 @@ merged = merged[(merged["year"] >= 1940) & (merged["year"] <= 2025)]
 ########################################################################################################################
 
 # standardize variables for MLR
-predictors = ['sst_mean', 'shear']
+predictors = ['mslp_mean', 'rh600']
 
 # save MLR results
 results = {}
@@ -181,14 +181,14 @@ for basin, group in merged.groupby("sub_basin_name"):
 
     # remove rows with missing values
     group = group.dropna(
-        subset=["mslp_mean_y"] + predictors
+        subset=["origin_node_count"] + predictors
     )
 
     # skip if too few observations or no variation in response
     if len(group) < 10:
         continue
 
-    if group["mslp_mean_y"].nunique() < 2:
+    if group["origin_node_count"].nunique() < 2:
         continue
 
     # standardize predictors
@@ -198,14 +198,14 @@ for basin, group in merged.groupby("sub_basin_name"):
     group[predictors] = scaler.fit_transform(group[predictors])
 
     model = smf.ols(
-        "mslp_mean_y ~ sst_mean + shear",
+        "origin_node_count ~ mslp_mean + rh600",
         data=group
     ).fit()
 
     results[basin] = model
 
     predictions[basin] = pd.DataFrame({
-        "Actual": group["mslp_mean_y"],
+        "Actual": group["origin_node_count"],
         "Predicted": model.fittedvalues
 })  
 
@@ -238,12 +238,12 @@ for basin, model in results.items():
 coef_df = pd.DataFrame(coef_results)
 
 # choose sub-basin
-sb = "Subtropical Atlantic"
+sb = "Gulf (A)"
 
 print(coef_df[coef_df['sub_basin']==sb])
 
 # save coef table as csv
-coef_df.to_csv(f"datasets/data_viz/MLR/intensity/v2_runs/MLR_mslpMeanY_vs_sstMean+shear_coef_table_{sb}.csv")
+coef_df.to_csv(f"datasets/data_viz/MLR/TC+TD/v2_runs/MLR_originNodes_vs_mslpMean+rh600_coef_table_{sb}.csv")
 
 ######################################################################################################
 
@@ -255,7 +255,7 @@ model = results[sb]
 
 # get data for this basin
 group = merged[merged["sub_basin_name"] == sb].dropna(
-    subset=["mslp_mean_y"] + predictors
+    subset=["origin_node_count"] + predictors
 ).copy()
 
 # standardize predictors exactly as during model fitting
@@ -274,11 +274,11 @@ fig, ax = plt.subplots(figsize=(14,6))
 # observed counts
 ax.plot(
     group["year"],
-    group["mslp_mean_y"],
+    group["origin_node_count"],
     color="black",
     linewidth=2,
     marker="o",
-    label="Observed MSLP (Pa)"
+    label="Observed TC+TD Origins"
 )
 
 # predicted counts
@@ -289,21 +289,21 @@ ax.plot(
     linewidth=2,
     linestyle="--",
     marker="s",
-    label="Predicted MSLP (Pa)"
+    label="Predicted TC+TD Origins"
 )
 
 ax.set_xlabel("Year")
-ax.set_ylabel("TC+TD Intensity")
+ax.set_ylabel("Origin Nodes (count)")
 
 ax.set_title(
-    f"{sb}\nObserved vs. Predicted TC+TD Intensity\n"
+    f"{sb}\nObserved vs. Predicted TC+TD Origin Locations\n"
     f"Multiple Linear Regression ($R^2$ = {model.rsquared:.2f})"
 )
 
 ax.legend()
 
 plt.tight_layout()
-plt.savefig(f"images/data_viz/MLR/intensity/v2_runs/actual_v_predicted_mslpMeanY_sstMean+shear_{sb}.png")
+plt.savefig(f"images/data_viz/MLR/TC+TD/v2_runs/actual_v_predicted_originNodes_mslpMean+rh600_{sb}.png")
 plt.show()
 
 ######################################################################################################
@@ -445,7 +445,7 @@ vif_summary = vif_summary[["Basin", "Variable", "VIF"]]
 print(vif_summary[vif_summary['Basin']==sb])
 
 # save to csv
-vif_summary.to_csv(f"datasets/data_viz/MLR/intensity/v2_runs/VIF_mslpMeanY_vs_sstMean+shear_{sb}.csv")
+vif_summary.to_csv(f"datasets/data_viz/MLR/TC+TD/v2_runs/VIF_originNodes_vs_mslpMean+rh600_{sb}.csv")
 
 ########################################################################################################################
 

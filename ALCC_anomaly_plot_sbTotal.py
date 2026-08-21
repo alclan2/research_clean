@@ -14,10 +14,10 @@ import cartopy.mpl.ticker as cticker
 import matplotlib.patheffects as pe
 
 # TC version
-TC = 'TC.0'
+TC = 'TC.2'
 
 # load dataset
-df = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{TC}_all_mslp_density_avg_table.csv")
+df = pd.read_csv(f"datasets/ALCC/post_python_processing/{TC}/{TC}_all_counts_origins_avg_table.csv")
 
 # filter only oo mode
 df_oo = df[df['mode'] == 'oo'].copy()
@@ -37,6 +37,8 @@ density = (
     .mean()
     .reset_index(name='TCs_per_year')
 )
+
+print(df_oo.head())
 
 ################################################################################
 # set up sub basins
@@ -342,7 +344,7 @@ cb1 = fig.colorbar(
     cax=cax1,
     orientation='horizontal'
 )
-cb1.set_label("TC Density (TCs per year)")
+cb1.set_label("TC Origin Locations (origin nodes per year)")
 
 # anomaly colorbar
 cax2 = fig.add_axes([0.55, 0.08, 0.3, 0.025])
@@ -352,7 +354,7 @@ cb2 = fig.colorbar(
     cax=cax2,
     orientation='horizontal'
 )
-cb2.set_label("Density anomaly (reference mode oo)")
+cb2.set_label("Origin node anomaly (reference mode oo)")
 
 fig.subplots_adjust(
     left=0.05,
@@ -364,11 +366,23 @@ fig.subplots_adjust(
 )
 
 fig.suptitle(
-    f"TC Density Anomalies ({TC})",
+    f"TC Origin Node Anomalies ({TC})",
     fontsize=16,
     y=0.98
 )
 
 # plt.tight_layout()
-# plt.savefig(f"images/data_viz/alcc/{TC}/runs_averaged/{TC}_density_anomaly_sbTotal_grid.png")
+plt.savefig(f"images/data_viz/alcc/{TC}/runs_averaged/{TC}_origin_anomaly_sbTotal_grid.png")
 plt.show()
+
+
+# for col in ['count_1', 'count_2', 'mean_count']:
+#     annual = (
+#         df[df['mode'] == 'oo']
+#         .groupby('year')[col]
+#         .sum()
+#     )
+
+#     print(f"\n{col}")
+#     print("mean annual:", annual.mean())
+#     print("total:", annual.sum())

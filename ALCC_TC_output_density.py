@@ -79,6 +79,8 @@ ds = ds_dict[mode]
 # convert lon to 180 scale
 ds['lon_180'] = ((ds['lon'] + 180) % 360) - 180
 
+print(ds.head())
+
 #####################################################################################################################
 
 # read in basin definition file
@@ -191,6 +193,7 @@ def shift_lon(geom):
 
 # shift lon
 sub_basins["geometry"] = sub_basins["geometry"].apply(shift_lon)
+basins["geometry"] = basins["geometry"].apply(shift_lon)
 
 # #####################################################################################################################
 
@@ -259,9 +262,9 @@ counts = (
 # print(ds_filt["sub_basin_start"].isna().sum())
 
 # print(counts)
-# 
+
 # save table
-ds_filt.to_csv(f"datasets/ALCC/post_python_processing/{TC}/{run}/density/ALCC_{TC}_{run}_output_density_perYr_wSubbasin_{mode}")
+# ds_filt.to_csv(f"datasets/ALCC/post_python_processing/{TC}/{run}/density/ALCC_{TC}_{run}_output_density_perYr_wSubbasin_{mode}")
 
 #####################################################################################################################
 
