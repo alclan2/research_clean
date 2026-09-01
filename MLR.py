@@ -52,9 +52,16 @@ ike_mean = pd.read_csv("datasets/IKE/IKE_TC+TD_mean_timeseries.png")
 ike_sum = pd.read_csv("datasets/IKE/IKE_TC+TD_accum_timeseries.png")
 
 # load MSLP mean (from SYCLOPS - dependent variable)
-mslp_y = pd.read_csv("datasets/MSLP/mslp_mean_timeseries_perYr_perSB_SYCLOPS.csv")
+mslp_mean_y = pd.read_csv("datasets/MSLP/mslp_mean_timeseries_perYr_perSB_SYCLOPS.csv")
 
-# print(mslp_y)
+# load MSLP sum (from SYCLOPS - dependent variable)
+mslp_sum_y = pd.read_csv("datasets/MSLP/mslp_summed_timeseries_perYr_perSB_SYCLOPS.csv")
+
+# load MSLP anom from environmental norm (from SYCLOPS - dependent variable)
+mslp_anom_y = pd.read_csv("datasets/MSLP/mslp_anom_timeseries_perYr_perSB_SYCLOPS.csv")
+
+# print(mslp_sum_y)
+# print(mslp_anom_y)
 
 # reformat origins, rh, and IKE tables
 origins = ds.melt(
@@ -83,7 +90,11 @@ sst_mean = sst_mean.loc[:, ~sst_mean.columns.str.contains("^Unnamed")]
 mslp_mean = mslp_mean.loc[:, ~mslp_mean.columns.str.contains("^Unnamed")]
 ike_mean = ike_mean.loc[:, ~ike_mean.columns.str.contains("^Unnamed")]
 ike_sum = ike_sum.loc[:, ~ike_sum.columns.str.contains("^Unnamed")]
-mslp_y = mslp_y.loc[:, ~mslp_y.columns.str.contains("^Unnamed")]
+mslp_mean_y = mslp_mean_y.loc[:, ~mslp_mean_y.columns.str.contains("^Unnamed")]
+mslp_sum_y = mslp_sum_y.loc[:, ~mslp_sum_y.columns.str.contains("^Unnamed")]
+mslp_anom_y = mslp_anom_y.loc[:, ~mslp_anom_y.columns.str.contains("^Unnamed")]
+gpi = gpi.loc[:, ~gpi.columns.str.contains("^Unnamed")]
+rh = rh.loc[:, ~rh.columns.str.contains("^Unnamed")]
 
 # make sure column names match across datasets
 origins = origins.rename(columns={"sub_basin": "sub_basin_name"})
@@ -94,7 +105,9 @@ sst_anom = sst_anom.rename(columns={"mean_anom": "sst_anom"})
 sst_mean = sst_mean.rename(columns={"mean": "sst_mean"})
 ike_mean = ike_mean.rename(columns={"IKE": "ike_mean"})
 ike_sum = ike_sum.rename(columns={"IKE": "ike_sum"})
-mslp_y = mslp_y.rename(columns={"MSLP": "mslp_mean_y"})
+mslp_mean_y = mslp_mean_y.rename(columns={"MSLP": "mslp_mean_y"})
+mslp_sum_y = mslp_sum_y.rename(columns={"MSLP": "mslp_sum_y"})
+mslp_anom_y = mslp_anom_y.rename(columns={"MSLP_anom": "mslp_anom_y"})
 
 # merge into one table on year and sub basin
 merged = (
@@ -105,7 +118,17 @@ merged = (
         how="outer"
     )
     .merge(
-        mslp_y,
+        mslp_mean_y,
+        on=["year", "sub_basin_name"],
+        how="outer"
+    )
+    .merge(
+        mslp_sum_y,
+        on=["year", "sub_basin_name"],
+        how="outer"
+    )
+    .merge(
+        mslp_anom_y,
         on=["year", "sub_basin_name"],
         how="outer"
     )
@@ -169,7 +192,7 @@ merged = merged[(merged["year"] >= 1940) & (merged["year"] <= 2025)]
 ########################################################################################################################
 
 # standardize variables for MLR
-predictors = ['mslp_mean', 'rh600']
+predictors = ['sst_mean']
 
 # save MLR results
 results = {}
@@ -198,7 +221,7 @@ for basin, group in merged.groupby("sub_basin_name"):
     group[predictors] = scaler.fit_transform(group[predictors])
 
     model = smf.ols(
-        "origin_node_count ~ mslp_mean + rh600",
+        "origin_node_count ~ sst_mean",
         data=group
     ).fit()
 
@@ -237,19 +260,18 @@ for basin, model in results.items():
 
 coef_df = pd.DataFrame(coef_results)
 
-# choose sub-basin
-sb = "Gulf (A)"
+# print(coef_df)
 
-print(coef_df[coef_df['sub_basin']==sb])
-
-# save coef table as csv
-coef_df.to_csv(f"datasets/data_viz/MLR/TC+TD/v2_runs/MLR_originNodes_vs_mslpMean+rh600_coef_table_{sb}.csv")
+# # save coef table as csv
+# coef_df.to_csv(f"datasets/data_viz/MLR/TC+TD/v3_runs/MLR_originNodes_vs_sstMean_coef_table.csv")
 
 ######################################################################################################
 
 # # # actual v predicted for TWO variables
 # choose sub-basin
-# sb = "Caribbean"
+sb = "Subtropical Atlantic"
+
+# print(coef_df[coef_df['sub_basin']==sb])
 
 model = results[sb]
 
@@ -303,7 +325,7 @@ ax.set_title(
 ax.legend()
 
 plt.tight_layout()
-plt.savefig(f"images/data_viz/MLR/TC+TD/v2_runs/actual_v_predicted_originNodes_mslpMean+rh600_{sb}.png")
+# plt.savefig(f"images/data_viz/MLR/TC+TD/v3_runs/actual_v_predicted_originNodes_sstMean_{sb}.png")
 plt.show()
 
 ######################################################################################################
@@ -442,10 +464,10 @@ vif_summary = pd.concat(vif_tables, ignore_index=True)
 # Optional: reorder columns
 vif_summary = vif_summary[["Basin", "Variable", "VIF"]]
 
-print(vif_summary[vif_summary['Basin']==sb])
+# print(vif_summary[vif_summary['Basin']==sb])
 
-# save to csv
-vif_summary.to_csv(f"datasets/data_viz/MLR/TC+TD/v2_runs/VIF_originNodes_vs_mslpMean+rh600_{sb}.csv")
+# # save to csv
+# vif_summary.to_csv(f"datasets/data_viz/MLR/TC+TD/v3_runs/VIF_originNodes_vs_sstMean.csv")
 
 ########################################################################################################################
 

@@ -397,15 +397,41 @@ tc_sb = gpd.sjoin(
 # add year column
 tc_sb['year'] = tc_sb['ISOTIME'].dt.year
 
-# pivot by year and subbasin to get mean MSLP
-mslp_annual = (
+# # pivot by year and subbasin to get mean MSLP
+# mslp_annual = (
+#     tc_sb
+#     .groupby(['year', 'sub_basin_name'])['MSLP']
+#     .sum()
+#     .reset_index()
+# )
+
+# print(mslp_annual)
+
+# # save to csv
+# mslp_annual.to_csv("datasets/MSLP/mslp_summed_timeseries_perYr_perSB_SYCLOPS.csv")
+
+#################################################################################################################
+
+# get MSLP timeseries per sub basin of anomaly from environmental standard pressure
+
+# define standard environmental pressure (from Holland paper)
+mslp_env = 1015 # in hPa
+
+# convert dataset to hPa
+tc_sb['MSLP'] = tc_sb['MSLP'] / 100
+
+# calc MSLP anomaly
+tc_sb['MSLP_anom'] = tc_sb['MSLP'] - mslp_env
+
+# pivot by year and subbasin to get mean MSLP anom
+mslp_anom = (
     tc_sb
-    .groupby(['year', 'sub_basin_name'])['MSLP']
-    .mean()
+    .groupby(['year', 'sub_basin_name'])['MSLP_anom']
+    .sum()
     .reset_index()
 )
 
-print(mslp_annual)
+# print(mslp_anom)
 
-# save to csv
-mslp_annual.to_csv("datasets/MSLP/mslp_mean_timeseries_perYr_perSB_SYCLOPS.csv")
+# # save to csv
+# mslp_anom.to_csv("datasets/MSLP/mslp_anom_timeseries_perYr_perSB_SYCLOPS.csv")
