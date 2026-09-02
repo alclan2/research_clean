@@ -176,7 +176,7 @@ sub_basins["geometry"] = sub_basins["geometry"].apply(shift_lon)
 # load PI dataset
 ds = xr.open_dataset("datasets/potential_intensity/pi_output.nc")
 
-print(ds)
+# print(ds)
 
 # convert to data frame
 df = ds["vmax"].to_dataframe(name="vmax").reset_index()
@@ -199,15 +199,22 @@ gdf = gpd.sjoin(
     predicate="within",   # or "intersects"
 )
 
-# # add year column
-# gdf['year'] = gdf['time'].dt.year
+# print(gdf)
 
-# # pivot to time series
-# ts = (
-#     gdf.groupby(["year", "sub_basin_name"])["vmax"]
-#        .mean()
-#        .unstack("sub_basin_name")
-# )
+# add year column
+gdf['year'] = gdf['time'].dt.year
+
+# pivot to time series
+ts = (
+    gdf.groupby(["year", "sub_basin_name"])["vmax"]
+       .mean()
+       .reset_index()
+)
+
+print(ts)
+
+# save to csv
+ts.to_csv("datasets/potential_intensity/vmax_mean_perYr_perSb.csv")
 
 # # Number of sub-basins
 # n = len(ts.columns)

@@ -60,6 +60,12 @@ mslp_sum_y = pd.read_csv("datasets/MSLP/mslp_summed_timeseries_perYr_perSB_SYCLO
 # load MSLP anom from environmental norm (from SYCLOPS - dependent variable)
 mslp_anom_y = pd.read_csv("datasets/MSLP/mslp_anom_timeseries_perYr_perSB_SYCLOPS.csv")
 
+# load MPI (maximum potential intensity) from python package calc
+mpi = pd.read_csv("datasets/potential_intensity/vmax_max_perYr_perSb.csv")
+
+# load PI (potential intensity) from python package calc
+pi = pd.read_csv("datasets/potential_intensity/vmax_mean_perYr_perSb.csv")
+
 # print(mslp_sum_y)
 # print(mslp_anom_y)
 
@@ -95,6 +101,8 @@ mslp_sum_y = mslp_sum_y.loc[:, ~mslp_sum_y.columns.str.contains("^Unnamed")]
 mslp_anom_y = mslp_anom_y.loc[:, ~mslp_anom_y.columns.str.contains("^Unnamed")]
 gpi = gpi.loc[:, ~gpi.columns.str.contains("^Unnamed")]
 rh = rh.loc[:, ~rh.columns.str.contains("^Unnamed")]
+mpi = mpi.loc[:, ~mpi.columns.str.contains("^Unnamed")]
+pi = pi.loc[:, ~pi.columns.str.contains("^Unnamed")]
 
 # make sure column names match across datasets
 origins = origins.rename(columns={"sub_basin": "sub_basin_name"})
@@ -108,6 +116,10 @@ ike_sum = ike_sum.rename(columns={"IKE": "ike_sum"})
 mslp_mean_y = mslp_mean_y.rename(columns={"MSLP": "mslp_mean_y"})
 mslp_sum_y = mslp_sum_y.rename(columns={"MSLP": "mslp_sum_y"})
 mslp_anom_y = mslp_anom_y.rename(columns={"MSLP_anom": "mslp_anom_y"})
+mpi = mpi.rename(columns={"vmax": "mpi"})
+pi = pi.rename(columns={"vmax": "pi"})
+
+# print(pi.head())
 
 # merge into one table on year and sub basin
 merged = (
@@ -129,6 +141,16 @@ merged = (
     )
     .merge(
         mslp_anom_y,
+        on=["year", "sub_basin_name"],
+        how="outer"
+    )
+    .merge(
+        mpi,
+        on=["year", "sub_basin_name"],
+        how="outer"
+    )
+    .merge(
+        pi,
         on=["year", "sub_basin_name"],
         how="outer"
     )
@@ -192,7 +214,7 @@ merged = merged[(merged["year"] >= 1940) & (merged["year"] <= 2025)]
 ########################################################################################################################
 
 # standardize variables for MLR
-predictors = ['sst_mean']
+predictors = ['rh600']
 
 # save MLR results
 results = {}
@@ -204,14 +226,14 @@ for basin, group in merged.groupby("sub_basin_name"):
 
     # remove rows with missing values
     group = group.dropna(
-        subset=["origin_node_count"] + predictors
+        subset=["mpi"] + predictors
     )
 
     # skip if too few observations or no variation in response
     if len(group) < 10:
         continue
 
-    if group["origin_node_count"].nunique() < 2:
+    if group["mpi"].nunique() < 2:
         continue
 
     # standardize predictors
@@ -221,14 +243,14 @@ for basin, group in merged.groupby("sub_basin_name"):
     group[predictors] = scaler.fit_transform(group[predictors])
 
     model = smf.ols(
-        "origin_node_count ~ sst_mean",
+        "mpi ~ rh600",
         data=group
     ).fit()
 
     results[basin] = model
 
     predictions[basin] = pd.DataFrame({
-        "Actual": group["origin_node_count"],
+        "Actual": group["mpi"],
         "Predicted": model.fittedvalues
 })  
 
@@ -260,10 +282,10 @@ for basin, model in results.items():
 
 coef_df = pd.DataFrame(coef_results)
 
-# print(coef_df)
+print(coef_df)
 
-# # save coef table as csv
-# coef_df.to_csv(f"datasets/data_viz/MLR/TC+TD/v3_runs/MLR_originNodes_vs_sstMean_coef_table.csv")
+# save coef table as csv
+coef_df.to_csv(f"datasets/data_viz/MLR/intensity/v3_runs/MLR_mpi_vs_rh600_coef_table.csv")
 
 ######################################################################################################
 
@@ -277,7 +299,7 @@ model = results[sb]
 
 # get data for this basin
 group = merged[merged["sub_basin_name"] == sb].dropna(
-    subset=["origin_node_count"] + predictors
+    subset=["mpi"] + predictors
 ).copy()
 
 # standardize predictors exactly as during model fitting
@@ -296,11 +318,11 @@ fig, ax = plt.subplots(figsize=(14,6))
 # observed counts
 ax.plot(
     group["year"],
-    group["origin_node_count"],
+    group["mpi"],
     color="black",
     linewidth=2,
     marker="o",
-    label="Observed TC+TD Origins"
+    label="Observed MPI"
 )
 
 # predicted counts
@@ -311,21 +333,21 @@ ax.plot(
     linewidth=2,
     linestyle="--",
     marker="s",
-    label="Predicted TC+TD Origins"
+    label="Predicted MPI"
 )
 
 ax.set_xlabel("Year")
-ax.set_ylabel("Origin Nodes (count)")
+ax.set_ylabel("MPI (m/s)")
 
 ax.set_title(
-    f"{sb}\nObserved vs. Predicted TC+TD Origin Locations\n"
+    f"{sb}\nObserved vs. Predicted Maximum Potential Intensity\n"
     f"Multiple Linear Regression ($R^2$ = {model.rsquared:.2f})"
 )
 
 ax.legend()
 
 plt.tight_layout()
-# plt.savefig(f"images/data_viz/MLR/TC+TD/v3_runs/actual_v_predicted_originNodes_sstMean_{sb}.png")
+plt.savefig(f"images/data_viz/MLR/intensity/v3_runs/actual_v_predicted_mpi_rh600_{sb}.png")
 plt.show()
 
 ######################################################################################################
@@ -466,8 +488,8 @@ vif_summary = vif_summary[["Basin", "Variable", "VIF"]]
 
 # print(vif_summary[vif_summary['Basin']==sb])
 
-# # save to csv
-# vif_summary.to_csv(f"datasets/data_viz/MLR/TC+TD/v3_runs/VIF_originNodes_vs_sstMean.csv")
+# save to csv
+# vif_summary.to_csv(f"datasets/data_viz/MLR/intensity/v3_runs/VIF_mpi_vs_sstMean.csv")
 
 ########################################################################################################################
 
