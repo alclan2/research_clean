@@ -214,7 +214,7 @@ merged = merged[(merged["year"] >= 1940) & (merged["year"] <= 2025)]
 ########################################################################################################################
 
 # standardize variables for MLR
-predictors = ['rh600']
+predictors = ['sst_mean', 'shear', 'gpi', 'rh600']
 
 # save MLR results
 results = {}
@@ -226,14 +226,14 @@ for basin, group in merged.groupby("sub_basin_name"):
 
     # remove rows with missing values
     group = group.dropna(
-        subset=["mpi"] + predictors
+        subset=["origin_node_count"] + predictors
     )
 
     # skip if too few observations or no variation in response
     if len(group) < 10:
         continue
 
-    if group["mpi"].nunique() < 2:
+    if group["origin_node_count"].nunique() < 2:
         continue
 
     # standardize predictors
@@ -243,14 +243,14 @@ for basin, group in merged.groupby("sub_basin_name"):
     group[predictors] = scaler.fit_transform(group[predictors])
 
     model = smf.ols(
-        "mpi ~ rh600",
+        "origin_node_count ~ sst_mean + shear + gpi + rh600",
         data=group
     ).fit()
 
     results[basin] = model
 
     predictions[basin] = pd.DataFrame({
-        "Actual": group["mpi"],
+        "Actual": group["origin_node_count"],
         "Predicted": model.fittedvalues
 })  
 
@@ -278,28 +278,33 @@ for basin, model in results.items():
     for predictor, pval in model.pvalues.items():
         row[f"{predictor}_pval"] = pval
 
+    # add 95% confidence intervals
+    conf_int = model.conf_int()
+    for predictor in model.params.index:
+        row[f"{predictor}_CI_lower"] = conf_int.loc[predictor, 0]
+        row[f"{predictor}_CI_upper"] = conf_int.loc[predictor, 1]
+
+
     coef_results.append(row)
+
+# choose sub-basin
+sb = "Subtropical Atlantic"
 
 coef_df = pd.DataFrame(coef_results)
 
-print(coef_df)
+print(coef_df[coef_df['sub_basin']==sb])
 
 # save coef table as csv
-coef_df.to_csv(f"datasets/data_viz/MLR/intensity/v3_runs/MLR_mpi_vs_rh600_coef_table.csv")
+coef_df[coef_df['sub_basin']==sb].to_csv(f"datasets/data_viz/MLR/TC+TD/v3_runs/b_runs/MLR_origins_vs_sstMean+shear+gpi+rh600_coef_table_{sb}.csv")
 
 ######################################################################################################
 
 # # # actual v predicted for TWO variables
-# choose sub-basin
-sb = "Subtropical Atlantic"
-
-# print(coef_df[coef_df['sub_basin']==sb])
-
 model = results[sb]
 
 # get data for this basin
 group = merged[merged["sub_basin_name"] == sb].dropna(
-    subset=["mpi"] + predictors
+    subset=["origin_node_count"] + predictors
 ).copy()
 
 # standardize predictors exactly as during model fitting
@@ -318,11 +323,11 @@ fig, ax = plt.subplots(figsize=(14,6))
 # observed counts
 ax.plot(
     group["year"],
-    group["mpi"],
+    group["origin_node_count"],
     color="black",
     linewidth=2,
     marker="o",
-    label="Observed MPI"
+    label="Observed TC+TD Origin Nodes"
 )
 
 # predicted counts
@@ -333,21 +338,21 @@ ax.plot(
     linewidth=2,
     linestyle="--",
     marker="s",
-    label="Predicted MPI"
+    label="Predicted TC+TD Origin Nodes"
 )
 
 ax.set_xlabel("Year")
-ax.set_ylabel("MPI (m/s)")
+ax.set_ylabel("Origin Node Count")
 
 ax.set_title(
-    f"{sb}\nObserved vs. Predicted Maximum Potential Intensity\n"
+    f"{sb}\nObserved vs. Predicted TC+TD Origin Locations\n"
     f"Multiple Linear Regression ($R^2$ = {model.rsquared:.2f})"
 )
 
 ax.legend()
 
 plt.tight_layout()
-plt.savefig(f"images/data_viz/MLR/intensity/v3_runs/actual_v_predicted_mpi_rh600_{sb}.png")
+plt.savefig(f"images/data_viz/MLR/TC+TD/v3_runs/b_runs/actual_v_predicted_origins_sstMean+shear+gpi+rh600_{sb}.png")
 plt.show()
 
 ######################################################################################################
@@ -489,7 +494,7 @@ vif_summary = vif_summary[["Basin", "Variable", "VIF"]]
 # print(vif_summary[vif_summary['Basin']==sb])
 
 # save to csv
-# vif_summary.to_csv(f"datasets/data_viz/MLR/intensity/v3_runs/VIF_mpi_vs_sstMean.csv")
+vif_summary[vif_summary['Basin']==sb].to_csv(f"datasets/data_viz/MLR/TC+TD/v3_runs/b_runs/VIF_origins_vs_sstMean+shear+gpi+rh600_{sb}.csv")
 
 ########################################################################################################################
 
