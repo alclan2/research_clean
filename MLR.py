@@ -66,8 +66,13 @@ mpi = pd.read_csv("datasets/potential_intensity/vmax_max_perYr_perSb.csv")
 # load PI (potential intensity) from python package calc
 pi = pd.read_csv("datasets/potential_intensity/vmax_mean_perYr_perSb.csv")
 
-# print(mslp_sum_y)
-# print(mslp_anom_y)
+# load zonal velocity variable (absolute value version)
+uwind_abs = pd.read_csv("datasets/u-wind/post_processing/uwnd_mean_absValues_perYr_perSb.csv")
+
+# load zonal velocity variable (signed value version)
+uwind_raw = pd.read_csv("datasets/u-wind/post_processing/uwnd_mean_rawValues_perYr_perSb.csv")
+
+# print(uwind) 
 
 # reformat origins, rh, and IKE tables
 origins = ds.melt(
@@ -103,6 +108,8 @@ gpi = gpi.loc[:, ~gpi.columns.str.contains("^Unnamed")]
 rh = rh.loc[:, ~rh.columns.str.contains("^Unnamed")]
 mpi = mpi.loc[:, ~mpi.columns.str.contains("^Unnamed")]
 pi = pi.loc[:, ~pi.columns.str.contains("^Unnamed")]
+uwind_abs = uwind_abs.loc[:, ~uwind_abs.columns.str.contains("^Unnamed")]
+uwind_raw = uwind_raw.loc[:, ~uwind_raw.columns.str.contains("^Unnamed")]
 
 # make sure column names match across datasets
 origins = origins.rename(columns={"sub_basin": "sub_basin_name"})
@@ -118,6 +125,8 @@ mslp_sum_y = mslp_sum_y.rename(columns={"MSLP": "mslp_sum_y"})
 mslp_anom_y = mslp_anom_y.rename(columns={"MSLP_anom": "mslp_anom_y"})
 mpi = mpi.rename(columns={"vmax": "mpi"})
 pi = pi.rename(columns={"vmax": "pi"})
+uwind_abs = uwind_abs.rename(columns={"uwnd": "uwind_abs"})
+uwind_raw = uwind_raw.rename(columns={"uwnd": "uwind_raw"})
 
 # print(pi.head())
 
@@ -204,6 +213,16 @@ merged = (
         on=["year", "sub_basin_name"],
         how="outer"
     )
+    .merge(
+        uwind_abs,
+        on=["year", "sub_basin_name"],
+        how="outer"
+    )
+    .merge(
+        uwind_raw,
+        on=["year", "sub_basin_name"],
+        how="outer"
+    )
 )
 
 # filter to time period where data exists across all variables
@@ -211,370 +230,382 @@ merged = merged[(merged["year"] >= 1940) & (merged["year"] <= 2025)]
 
 # print(merged)
 
+variables = merged.select_dtypes(include="number").columns.drop("year")
+
+corr_by_subbasin = (
+    merged.groupby("sub_basin_name")[variables]
+      .corr()
+)
+
+print(corr_by_subbasin)
+
+# save corr table to csv
+corr_by_subbasin.to_csv("datasets/data_viz/MLR/independent_vars_correl_table_perSb_v3_runs.csv")
+
 ########################################################################################################################
 
-# standardize variables for MLR
-predictors = ['sst_mean', 'shear', 'gpi', 'rh600']
+# # standardize variables for MLR
+# predictors = ['sst_mean', 'shear', 'gpi', 'rh600', 'uwind_raw']
 
-# save MLR results
-results = {}
+# # save MLR results
+# results = {}
 
-# save actual vs. predicted
-predictions = {}
+# # save actual vs. predicted
+# predictions = {}
 
-for basin, group in merged.groupby("sub_basin_name"):
+# for basin, group in merged.groupby("sub_basin_name"):
 
-    # remove rows with missing values
-    group = group.dropna(
-        subset=["origin_node_count"] + predictors
-    )
+#     # remove rows with missing values
+#     group = group.dropna(
+#         subset=["origin_node_count"] + predictors
+#     )
 
-    # skip if too few observations or no variation in response
-    if len(group) < 10:
-        continue
+#     # skip if too few observations or no variation in response
+#     if len(group) < 10:
+#         continue
 
-    if group["origin_node_count"].nunique() < 2:
-        continue
+#     if group["origin_node_count"].nunique() < 2:
+#         continue
 
-    # standardize predictors
-    group = group.copy()
+#     # standardize predictors
+#     group = group.copy()
 
-    scaler = StandardScaler()
-    group[predictors] = scaler.fit_transform(group[predictors])
+#     scaler = StandardScaler()
+#     group[predictors] = scaler.fit_transform(group[predictors])
 
-    model = smf.ols(
-        "origin_node_count ~ sst_mean + shear + gpi + rh600",
-        data=group
-    ).fit()
+#     model = smf.ols(
+#         "origin_node_count ~ sst_mean + shear + gpi + rh600 + uwind_raw",
+#         data=group
+#     ).fit()
 
-    results[basin] = model
+#     results[basin] = model
 
-    predictions[basin] = pd.DataFrame({
-        "Actual": group["origin_node_count"],
-        "Predicted": model.fittedvalues
-})  
+#     predictions[basin] = pd.DataFrame({
+#         "Actual": group["origin_node_count"],
+#         "Predicted": model.fittedvalues
+# })  
 
-    # print(basin)
-    # print(results[basin].summary())
-    # print(f"{basin}: condition number = {model.condition_number:.1f}")
+#     # print(basin)
+#     # print(results[basin].summary())
+#     # print(f"{basin}: condition number = {model.condition_number:.1f}")
 
-# combine results into one table per subbasin
-coef_results = []
+# # combine results into one table per subbasin
+# coef_results = []
 
-for basin, model in results.items():
+# for basin, model in results.items():
 
-    row = {
-        "sub_basin": basin,
-        "R2": model.rsquared,
-        "adj_R2": model.rsquared_adj,
-        "n": int(model.nobs)
-    }
+#     row = {
+#         "sub_basin": basin,
+#         "R2": model.rsquared,
+#         "adj_R2": model.rsquared_adj,
+#         "n": int(model.nobs)
+#     }
 
-    # add coefficients
-    for predictor, coef in model.params.items():
-        row[f"{predictor}_coef"] = coef
+#     # add coefficients
+#     for predictor, coef in model.params.items():
+#         row[f"{predictor}_coef"] = coef
 
-    # add p-values
-    for predictor, pval in model.pvalues.items():
-        row[f"{predictor}_pval"] = pval
+#     # add p-values
+#     for predictor, pval in model.pvalues.items():
+#         row[f"{predictor}_pval"] = pval
 
-    # add 95% confidence intervals
-    conf_int = model.conf_int()
-    for predictor in model.params.index:
-        row[f"{predictor}_CI_lower"] = conf_int.loc[predictor, 0]
-        row[f"{predictor}_CI_upper"] = conf_int.loc[predictor, 1]
+#     # add 95% confidence intervals
+#     conf_int = model.conf_int()
+#     for predictor in model.params.index:
+#         row[f"{predictor}_CI_lower"] = conf_int.loc[predictor, 0]
+#         row[f"{predictor}_CI_upper"] = conf_int.loc[predictor, 1]
 
 
-    coef_results.append(row)
+#     coef_results.append(row)
 
-# choose sub-basin
-sb = "Subtropical Atlantic"
-
-coef_df = pd.DataFrame(coef_results)
-
-print(coef_df[coef_df['sub_basin']==sb])
-
-# save coef table as csv
-coef_df[coef_df['sub_basin']==sb].to_csv(f"datasets/data_viz/MLR/TC+TD/v3_runs/b_runs/MLR_origins_vs_sstMean+shear+gpi+rh600_coef_table_{sb}.csv")
-
-######################################################################################################
-
-# # # actual v predicted for TWO variables
-model = results[sb]
-
-# get data for this basin
-group = merged[merged["sub_basin_name"] == sb].dropna(
-    subset=["origin_node_count"] + predictors
-).copy()
-
-# standardize predictors exactly as during model fitting
-scaler = StandardScaler()
-group[predictors] = scaler.fit_transform(group[predictors])
-
-# predict origin node counts using BOTH predictors
-group["Predicted"] = model.predict(group)
-
-# put back in chronological order
-group = group.sort_values("year")
-
-# plot
-fig, ax = plt.subplots(figsize=(14,6))
-
-# observed counts
-ax.plot(
-    group["year"],
-    group["origin_node_count"],
-    color="black",
-    linewidth=2,
-    marker="o",
-    label="Observed TC+TD Origin Nodes"
-)
-
-# predicted counts
-ax.plot(
-    group["year"],
-    group["Predicted"],
-    color="tab:blue",
-    linewidth=2,
-    linestyle="--",
-    marker="s",
-    label="Predicted TC+TD Origin Nodes"
-)
-
-ax.set_xlabel("Year")
-ax.set_ylabel("Origin Node Count")
-
-ax.set_title(
-    f"{sb}\nObserved vs. Predicted TC+TD Origin Locations\n"
-    f"Multiple Linear Regression ($R^2$ = {model.rsquared:.2f})"
-)
-
-ax.legend()
-
-plt.tight_layout()
-plt.savefig(f"images/data_viz/MLR/TC+TD/v3_runs/b_runs/actual_v_predicted_origins_sstMean+shear+gpi+rh600_{sb}.png")
-plt.show()
-
-######################################################################################################
-
-# # # actual v predicted for ONE variable
 # # choose sub-basin
-# basin = "Subtropical Atlantic"
+# sb = "Subtropical Atlantic"
 
-# model = results[basin]
+# coef_df = pd.DataFrame(coef_results)
+
+# print(coef_df[coef_df['sub_basin']==sb])
+
+# # save coef table as csv
+# coef_df[coef_df['sub_basin']==sb].to_csv(f"datasets/data_viz/MLR/TC+TD/v3_runs/b_runs/MLR_origins_vs_sstMean+shear+gpi+rh600+uwindRaw_coef_table_{sb}.csv")
+
+# ######################################################################################################
+
+# # # # actual v predicted for TWO variables
+# model = results[sb]
 
 # # get data for this basin
-# group = merged[merged["sub_basin_name"] == basin].dropna(
-#     subset=["ike_mean"] + predictors
+# group = merged[merged["sub_basin_name"] == sb].dropna(
+#     subset=["origin_node_count"] + predictors
 # ).copy()
 
-# # save original shear for plotting
-# var_original = group["sst_mean"].copy()
-
-# # standardize predictors for model prediction
+# # standardize predictors exactly as during model fitting
 # scaler = StandardScaler()
 # group[predictors] = scaler.fit_transform(group[predictors])
 
-# # predictions
+# # predict origin node counts using BOTH predictors
 # group["Predicted"] = model.predict(group)
 
-# # put back in time order
-# group["sst_mean_original"] = var_original
+# # put back in chronological order
 # group = group.sort_values("year")
 
-# # create figure
-# fig, ax1 = plt.subplots(figsize=(14, 6))
+# # plot
+# fig, ax = plt.subplots(figsize=(14,6))
 
-# # actual and predicted TC counts
-# ax1.plot(
+# # observed counts
+# ax.plot(
 #     group["year"],
-#     group["ike_mean"],
+#     group["origin_node_count"],
 #     color="black",
-#     linewidth = 2,
-#     label="Actual IKE (TJ)",
-#     zorder = 3
+#     linewidth=2,
+#     marker="o",
+#     label="Observed TC+TD Origin Nodes"
 # )
 
-# ax1.plot(
+# # predicted counts
+# ax.plot(
 #     group["year"],
 #     group["Predicted"],
 #     color="tab:blue",
+#     linewidth=2,
 #     linestyle="--",
-#     linewidth = 2,
-#     label="Predicted IKE (TJ)",
-#     zorder = 3
+#     marker="s",
+#     label="Predicted TC+TD Origin Nodes"
 # )
 
-# ax1.set_xlabel("Year")
-# ax1.set_ylabel("IKE", color="black")
+# ax.set_xlabel("Year")
+# ax.set_ylabel("Origin Nodes (count)")
 
-
-# # secondary axis for shear
-# ax2 = ax1.twinx()
-
-# ax2.plot(
-#     group["year"],
-#     group["sst_mean_original"],
-#     color="red",
-#     linewidth=1,
-#     alpha=0.5,
-#     zorder=1,
-#     label = "Mean SST (°C)"
+# ax.set_title(
+#     f"{sb}\nObserved vs. Predicted TC+TD Origin Locations\n"
+#     f"Multiple Linear Regression ($R^2$ = {model.rsquared:.2f})"
 # )
 
-# ax2.set_ylabel("Mean SST (°C)")
-
-
-# # title with R2
-# ax1.set_title(
-#     f"{basin}\nActual vs. Predicted Integrated Kinetic Energy and Sea Surface Temperature\n$R^2$ = {model.rsquared:.2f}",
-#     fontsize=12
-# )
-
-# # combine legends
-# lines1, labels1 = ax1.get_legend_handles_labels()
-# lines2, labels2 = ax2.get_legend_handles_labels()
-
-# ax1.legend(
-#     lines1 + lines2,
-#     labels1 + labels2,
-#     loc="center left",
-#     bbox_to_anchor=(1.08, 0.5)
-# )
+# ax.legend()
 
 # plt.tight_layout()
-# plt.savefig(f"images/data_viz/MLR/IKE/sst/actual_vs_predicted_ikeMean_sstMean_{basin}.png")
+# plt.savefig(f"images/data_viz/MLR/TC+TD/v3_runs/b_runs/actual_v_predicted_origins_sstMean+shear+gpi+rh600+uwindRaw_{sb}.png")
 # plt.show()
 
-# save to csv
-# coef_df.to_csv("datasets/data_viz/MLR_origin_nodes_standardized_results_shear_mslpMean_sstAnom_rh600.csv")
+# ######################################################################################################
 
-########################################################################################################################
+# # # # actual v predicted for ONE variable
+# # # choose sub-basin
+# # basin = "Subtropical Atlantic"
 
-# check VIF
-from statsmodels.stats.outliers_influence import variance_inflation_factor
-import statsmodels.api as sm
+# # model = results[basin]
 
-vif_tables = []
+# # # get data for this basin
+# # group = merged[merged["sub_basin_name"] == basin].dropna(
+# #     subset=["ike_mean"] + predictors
+# # ).copy()
 
-for basin, group in merged.groupby("sub_basin_name"):
+# # # save original shear for plotting
+# # var_original = group["sst_mean"].copy()
 
-    group = group.dropna(subset=predictors)
+# # # standardize predictors for model prediction
+# # scaler = StandardScaler()
+# # group[predictors] = scaler.fit_transform(group[predictors])
 
-    if len(group) < 10:
-        continue
+# # # predictions
+# # group["Predicted"] = model.predict(group)
 
-    X = pd.DataFrame(
-        StandardScaler().fit_transform(group[predictors]),
-        columns=predictors
-    )
+# # # put back in time order
+# # group["sst_mean_original"] = var_original
+# # group = group.sort_values("year")
 
-    X = sm.add_constant(X)
+# # # create figure
+# # fig, ax1 = plt.subplots(figsize=(14, 6))
 
-    vif = pd.DataFrame({
-        "Variable": X.columns,
-        "VIF": [
-            variance_inflation_factor(X.values, i)
-            for i in range(X.shape[1])
-        ]
-    })
+# # # actual and predicted TC counts
+# # ax1.plot(
+# #     group["year"],
+# #     group["ike_mean"],
+# #     color="black",
+# #     linewidth = 2,
+# #     label="Actual IKE (TJ)",
+# #     zorder = 3
+# # )
+
+# # ax1.plot(
+# #     group["year"],
+# #     group["Predicted"],
+# #     color="tab:blue",
+# #     linestyle="--",
+# #     linewidth = 2,
+# #     label="Predicted IKE (TJ)",
+# #     zorder = 3
+# # )
+
+# # ax1.set_xlabel("Year")
+# # ax1.set_ylabel("IKE", color="black")
 
 
-    # Add basin name
-    vif["Basin"] = basin
+# # # secondary axis for shear
+# # ax2 = ax1.twinx()
 
-    vif_tables.append(vif)
+# # ax2.plot(
+# #     group["year"],
+# #     group["sst_mean_original"],
+# #     color="red",
+# #     linewidth=1,
+# #     alpha=0.5,
+# #     zorder=1,
+# #     label = "Mean SST (°C)"
+# # )
 
-# Combine into one DataFrame
-vif_summary = pd.concat(vif_tables, ignore_index=True)
+# # ax2.set_ylabel("Mean SST (°C)")
 
-# Optional: reorder columns
-vif_summary = vif_summary[["Basin", "Variable", "VIF"]]
 
-# print(vif_summary[vif_summary['Basin']==sb])
+# # # title with R2
+# # ax1.set_title(
+# #     f"{basin}\nActual vs. Predicted Integrated Kinetic Energy and Sea Surface Temperature\n$R^2$ = {model.rsquared:.2f}",
+# #     fontsize=12
+# # )
 
-# save to csv
-vif_summary[vif_summary['Basin']==sb].to_csv(f"datasets/data_viz/MLR/TC+TD/v3_runs/b_runs/VIF_origins_vs_sstMean+shear+gpi+rh600_{sb}.csv")
+# # # combine legends
+# # lines1, labels1 = ax1.get_legend_handles_labels()
+# # lines2, labels2 = ax2.get_legend_handles_labels()
 
-########################################################################################################################
+# # ax1.legend(
+# #     lines1 + lines2,
+# #     labels1 + labels2,
+# #     loc="center left",
+# #     bbox_to_anchor=(1.08, 0.5)
+# # )
 
-# # LASSO to find best predictor variables
-# from sklearn.pipeline import Pipeline
-# from sklearn.preprocessing import StandardScaler
-# from sklearn.linear_model import LassoCV
-# from sklearn.impute import SimpleImputer
-# from sklearn.metrics import r2_score, mean_squared_error
+# # plt.tight_layout()
+# # plt.savefig(f"images/data_viz/MLR/IKE/sst/actual_vs_predicted_ikeMean_sstMean_{basin}.png")
+# # plt.show()
 
-# # predictors
-# vars = [
-#     "shear",
-#     "vm",
-#     "sst_anom",
-#     "rh600",
-#     "mslp_anom",
-#     "sst_mean",
-#     "mslp_mean"
-# ]
+# # save to csv
+# # coef_df.to_csv("datasets/data_viz/MLR_origin_nodes_standardized_results_shear_mslpMean_sstAnom_rh600.csv")
 
-# # lasso function
-# def run_lasso(df, target, predictors):
+# ########################################################################################################################
 
-#     # Keep only needed columns
-#     data = df[[target] + predictors].copy()
+# # check VIF
+# from statsmodels.stats.outliers_influence import variance_inflation_factor
+# import statsmodels.api as sm
 
-#     # Remove rows where dependent variable is missing
-#     data = data.dropna(subset=[target])
+# vif_tables = []
 
-#     X = data[predictors]
-#     y = data[target]
+# for basin, group in merged.groupby("sub_basin_name"):
 
-#     # LASSO pipeline
-#     model = Pipeline([
-#         ("imputer", SimpleImputer(strategy="median")),
-#         ("scaler", StandardScaler()),
-#         ("lasso", LassoCV(
-#             cv=5,
-#             random_state=42,
-#             max_iter=10000
-#         ))
-#     ])
+#     group = group.dropna(subset=predictors)
 
-#     # Fit
-#     model.fit(X, y)
+#     if len(group) < 10:
+#         continue
 
-#     # Predictions
-#     y_pred = model.predict(X)
-
-#     # Extract coefficients
-#     coef = pd.Series(
-#         model.named_steps["lasso"].coef_,
-#         index=predictors
+#     X = pd.DataFrame(
+#         StandardScaler().fit_transform(group[predictors]),
+#         columns=predictors
 #     )
 
-#     # Sort by importance
-#     coef = coef.sort_values(
-#         key=abs,
-#         ascending=False
-#     )
+#     X = sm.add_constant(X)
 
-#     print("\nTarget:", target)
-#     print("-------------------------")
-#     print("Best alpha:", model.named_steps["lasso"].alpha_)
-#     print("\nSelected variables:")
-#     print(coef[coef != 0])
+#     vif = pd.DataFrame({
+#         "Variable": X.columns,
+#         "VIF": [
+#             variance_inflation_factor(X.values, i)
+#             for i in range(X.shape[1])
+#         ]
+#     })
 
-#     print("\nPerformance:")
-#     print("R²:", r2_score(y, y_pred))
-#     print(
-#         "RMSE:",
-#         np.sqrt(mean_squared_error(y, y_pred))
-#     )
 
-#     return model, coef
+#     # Add basin name
+#     vif["Basin"] = basin
 
-# # run lasso
-# origin_model, origin_coef = run_lasso(
-#     merged,
-#     target="origin_node_count",
-#     predictors=vars
-# )
+#     vif_tables.append(vif)
+
+# # Combine into one DataFrame
+# vif_summary = pd.concat(vif_tables, ignore_index=True)
+
+# # Optional: reorder columns
+# vif_summary = vif_summary[["Basin", "Variable", "VIF"]]
+
+# # print(vif_summary[vif_summary['Basin']==sb])
+
+# # save to csv
+# vif_summary[vif_summary['Basin']==sb].to_csv(f"datasets/data_viz/MLR/TC+TD/v3_runs/b_runs/VIF_origins_vs_sstMean+shear+gpi+rh600+uwindRaw_{sb}.csv")
+
+# ########################################################################################################################
+
+# # # LASSO to find best predictor variables
+# # from sklearn.pipeline import Pipeline
+# # from sklearn.preprocessing import StandardScaler
+# # from sklearn.linear_model import LassoCV
+# # from sklearn.impute import SimpleImputer
+# # from sklearn.metrics import r2_score, mean_squared_error
+
+# # # predictors
+# # vars = [
+# #     "shear",
+# #     "vm",
+# #     "sst_anom",
+# #     "rh600",
+# #     "mslp_anom",
+# #     "sst_mean",
+# #     "mslp_mean"
+# # ]
+
+# # # lasso function
+# # def run_lasso(df, target, predictors):
+
+# #     # Keep only needed columns
+# #     data = df[[target] + predictors].copy()
+
+# #     # Remove rows where dependent variable is missing
+# #     data = data.dropna(subset=[target])
+
+# #     X = data[predictors]
+# #     y = data[target]
+
+# #     # LASSO pipeline
+# #     model = Pipeline([
+# #         ("imputer", SimpleImputer(strategy="median")),
+# #         ("scaler", StandardScaler()),
+# #         ("lasso", LassoCV(
+# #             cv=5,
+# #             random_state=42,
+# #             max_iter=10000
+# #         ))
+# #     ])
+
+# #     # Fit
+# #     model.fit(X, y)
+
+# #     # Predictions
+# #     y_pred = model.predict(X)
+
+# #     # Extract coefficients
+# #     coef = pd.Series(
+# #         model.named_steps["lasso"].coef_,
+# #         index=predictors
+# #     )
+
+# #     # Sort by importance
+# #     coef = coef.sort_values(
+# #         key=abs,
+# #         ascending=False
+# #     )
+
+# #     print("\nTarget:", target)
+# #     print("-------------------------")
+# #     print("Best alpha:", model.named_steps["lasso"].alpha_)
+# #     print("\nSelected variables:")
+# #     print(coef[coef != 0])
+
+# #     print("\nPerformance:")
+# #     print("R²:", r2_score(y, y_pred))
+# #     print(
+# #         "RMSE:",
+# #         np.sqrt(mean_squared_error(y, y_pred))
+# #     )
+
+# #     return model, coef
+
+# # # run lasso
+# # origin_model, origin_coef = run_lasso(
+# #     merged,
+# #     target="origin_node_count",
+# #     predictors=vars
+# # )

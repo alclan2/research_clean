@@ -167,10 +167,10 @@ uwnd = (
 # print(uwnd)
 
 # # convert to data frame
-# df = uwnd.to_dataframe(name="uwnd").reset_index()
+df = uwnd.to_dataframe(name="uwnd").reset_index()
 
 # version for absolute value (magnitude)
-df = np.abs(uwnd).to_dataframe(name="uwnd").reset_index()
+# df = np.abs(uwnd).to_dataframe(name="uwnd").reset_index()
 
 # create points
 df_pts = gpd.GeoDataFrame(
@@ -309,7 +309,9 @@ df_means = (
     .reset_index()
 )
 
-print(df_means)
+# print(df_means)
+
+print(df_means["uwnd"].agg(["min", "max", "mean", "std"]))
 
 # save 
-df_means.to_csv("datasets/u-wind/post_processing/uwnd_mean_perYr_perSb.csv")
+df_means.to_csv("datasets/u-wind/post_processing/uwnd_mean_rawValues_perYr_perSb.csv")
