@@ -168,7 +168,7 @@ daily_mean = sst_filt.resample(time="1D").mean()
 print(daily_mean)
 
 # save filtered datasets
-daily_mean.to_netcdf("datasets/COBE2 SST/post-processing/SST_daily_mean_1940-2024_clim_jun_oct.nc")
+# daily_mean.to_netcdf("datasets/COBE2 SST/post-processing/SST_daily_mean_1940-2024_clim_jun_oct.nc")
 
 #print(sst_anom.head())
 

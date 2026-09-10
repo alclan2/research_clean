@@ -14,7 +14,7 @@ import matplotlib.colors as colors
 # read in tc_basins file so we can filter to a specific ocean basin
 polygons_dict = {}
 
-with open("tc_basins.dat", "r") as f:
+with open("tc_basins_NAtl.dat", "r") as f:
     for line in f:
         line = line.strip()
         if not line or line.startswith("#"):
@@ -118,115 +118,68 @@ basins["geometry"] = basins["geometry"].apply(shift_lon)
 
 ## read in and filter our syclops data
 # path to the classified dataset
-ClassifiedData = r"datasets/SyCLoPS/SyCLoPS_classified_ERA5_1940_2024.parquet"
+ClassifiedData = r"datasets/SyCLoPS/SyCLoPS_classified_ERA5_1940_2024_v7.parquet"
 
 # open the parquet format file (PyArrow package required)
 df = pd.read_parquet(ClassifiedData)
 
 # TC Nodes: filter to TCs only, tropical flag = 1 so we are only counting before they become extratropical
-#dftc_node = df[(df.Tropical_Flag==1) & ((df.Adjusted_Label=='TC') | (df.Adjusted_Label=='TD')) & ~(df['Track_Info'].str.contains('QS', case=False, na=False))]
-dftc = df[(df.Tropical_Flag==1) & (df.Adjusted_Label=='TC') & ~(df['Track_Info'].str.contains('QS', case=False, na=False))]
+tc = df[(df.Tropical_Flag==1) & ((df.Adjusted_Label=='TC') | (df.Adjusted_Label=='TD')) & ~(df['Track_Info'].str.contains('QS', case=False, na=False))]
+# tc = df[(df.Tropical_Flag==1) & (df.Adjusted_Label=='TC') & ~(df['Track_Info'].str.contains('QS', case=False, na=False))]
 
 # sort by TID and ISOTIME
-dftc = dftc.sort_values(['TID', 'ISOTIME'])
+tc = tc.sort_values(['ISOTIME'])
 
 # convert lon to -180-180 from 0-360
-dftc['LON'] = ((dftc['LON'] + 180) % 360) - 180
-
-# find origin nodes
-dftc_origin = dftc.groupby('TID', as_index=False).first()
+tc['LON'] = ((tc['LON'] + 180) % 360) - 180
 
 # convert LAT and LON to a new column Points which contains (lon, lat) and convert to a geo data frame so we can filter using polygons
-tc_origin_pts = gpd.GeoDataFrame(
-    dftc_origin,
-    geometry=gpd.points_from_xy(dftc_origin.LON, dftc_origin.LAT),
-    crs="EPSG:4326"
+points = gpd.GeoDataFrame(
+    tc, 
+    geometry = gpd.points_from_xy(tc.LON, tc.LAT),
+    crs = "EPSG:4326"
 )
 
-# filter points to specific subbasin origin
-tc_origin_sb = gpd.sjoin(
-    tc_origin_pts,
-    sub_basins[sub_basins["sub_basin_name"] == "Mid-latitudinal US/CA"],
+# filter points to North Atlantic
+filtered = gpd.sjoin(
+    points,
+    basins[basins["basin name"] == "N Atlantic"],
     how = "inner",
     predicate = "within"
 )
 
-# get TIDs
-track_TIDs = tc_origin_sb["TID"].unique()
+# add Year column so we can create a timeseries
+filtered['YEAR'] = filtered['ISOTIME'].dt.year
 
-# filter on TIDs that have origin nodes in that specific subbasin
-dftc_track = dftc[dftc['TID'].isin(track_TIDs)]
+# filter to only columns we need
+filtered = filtered[['TID', 'LON', 'LAT', 'YEAR', 'geometry']]
 
-# create a figure with a geographic projection
-fig = plt.figure(figsize=(8,6))
-ax = plt.axes(projection=ccrs.PlateCarree()) 
+# print(filtered.head())
 
-# plot sub-basins first
-sub_basins.plot(
-    ax=ax,
-    facecolor='none',
-    edgecolor='darkblue',
-    path_effects=[pe.withStroke(linewidth=3, foreground='white')],
-    linewidth=1.5,
-    transform=ccrs.PlateCarree(),
-    zorder=4
+# join sub basins
+sb = gpd.sjoin(
+    filtered,
+    sub_basins[['sub_basin_name', 'geometry']],
+    how='left',
+    predicate='within'
 )
 
-# plot the TC tracks
-for id_, group in dftc_track.groupby('TID'):
-    ax.plot(
-        group['LON'],
-        group['LAT'],
-        linewidth=0.8,
-        label=str(id_)
-    )
+# pivot to calc occurrences per sub basin
+tc_density = (
+    sb.groupby(["YEAR", "sub_basin_name"])["TID"]
+      .nunique()
+      .reset_index(name="tc_count")
+)
 
-# Add coastlines
-ax.coastlines(resolution='50m', color='black', linewidth=1)
+tc_counts = (
+    sb.groupby(["YEAR", "sub_basin_name"])
+      .size()
+      .reset_index(name="tc_count")
+)
 
-# Set labels and title
-ax.set_xlabel('Longitude')
-ax.set_ylabel('Latitude')
-ax.set_title('Track of TCs with Mid-latitudinal US/CA Origin (North Atlantic, 1940-2024)')
+print(tc_density)
+print(tc_counts)
 
-# set axis bounds
-lon_min = -110
-lon_max = 20
-lat_min = 0
-lat_max = 60
-
-# add sub-basin labels
-for idx, row in sub_basins.iterrows():
-    point = row.geometry.centroid
-    name = row["sub_basin_name"]
-
-    # wrap text (adjust width as needed)
-    name_wrapped = "\n".join(textwrap.wrap(name, width=10, break_long_words=False, break_on_hyphens=False))
-    
-    if (lon_min <= point.x <= lon_max) and (lat_min <= point.y <= lat_max):
-        txt = ax.text(
-            point.x, point.y,
-            name_wrapped,
-            transform=ccrs.PlateCarree(),
-            fontsize=7,
-            weight='bold',
-            ha='center',
-            va='center',
-            color='black',
-            zorder=4
-        )
-        
-        txt.set_path_effects([
-            pe.withStroke(linewidth=3, foreground="white")
-        ])
-
-# Set tick marks every 10 degrees
-ax.set_xticks(np.arange(lon_min, lon_max, 10), crs=ccrs.PlateCarree())
-ax.set_yticks(np.arange(lat_min, lat_max, 10), crs=ccrs.PlateCarree())
-
-ax.set_extent([lon_min, lon_max, lat_min, lat_max],crs=ccrs.PlateCarree())
-
-plt.savefig(r"images/data_viz/TC_track_MidLatUS.png")
-plt.show()
-
-
+# save to csv
+tc_density.to_csv("datasets/SyCLoPS/tc+td_density_uniqueTIDs_perYr_perSb.csv")
+tc_counts.to_csv("datasets/SyCLoPS/tc+td_density_allTIDs_perYr_perSb.csv")

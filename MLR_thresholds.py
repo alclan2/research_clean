@@ -70,7 +70,7 @@ annual = (
     .reset_index()
 )
 
-print(annual)
+# print(annual)
 
 # # plot 
 # variables = ["tc_TH"]
@@ -131,70 +131,164 @@ print(annual)
 
 ####################################################################################################################
 
-# load origin node file
-ds = pd.read_csv("datasets/data_viz/TC+TD_origin_node_count_perSubbasin_SyCLoPS.csv")
+# # load origin node file
+# ds = pd.read_csv("datasets/SyCLoPS/tc_density_allTIDs_perYr_perSb.csv")
 
-# print(ds.head())
+# # print(ds.head())
 
-# reformat 
-origins = ds.melt(
-    id_vars="year",
-    value_vars=ds.columns.drop(["year", "Total"]),
-    var_name="sub_basin",
-    value_name="origin_node_count"
-)
+# # reformat 
+# origins = ds.rename(
+#     columns={
+#         "YEAR": "year",
+#         "sub_basin_name": "sub_basin",
+#         "tc_count": "origin_node_count"
+#     }
+# )[["year", "sub_basin", "origin_node_count"]]
 
-# print(origins.head())
+# # print(origins.head())
 
-# rename 
-origins = origins.rename(columns={"sub_basin": "sub_basin_name"})
+# # rename 
+# origins = origins.rename(columns={"sub_basin": "sub_basin_name"})
+
+# # merge with variables
+# table = (
+#     annual
+#     .merge(
+#         origins,
+#         on=["year", "sub_basin_name"],
+#         how="outer"
+#     )
+# )
+
+# # print(table)
+
+# subbasin = "Northeastern Seaboard"
+# variable = "tc_TH_two"
+
+# sb = table[
+#     table["sub_basin_name"] == subbasin
+# ].sort_values("year")
+
+# plt.figure(figsize=(10, 5))
+
+# plt.plot(
+#     sb["year"],
+#     sb["origin_node_count"],
+#     label="TC node count",
+#     color="black",
+#     linewidth=2
+# )
+
+# plt.plot(
+#     sb["year"],
+#     sb[variable],
+#     label="Days with Two Thresholds Satisfied",
+#     color="purple",
+#     linewidth=2
+# )
+
+# plt.title(subbasin)
+# plt.xlabel("Year")
+# plt.ylabel("Count")
+# plt.xlim(1981, 2025)
+# plt.legend()
+# plt.grid(alpha=0.3)
+
+# plt.tight_layout()
+
+# # plt.savefig(f"images/data_viz/MLR/thresholds/TC_allNodes/all_nodes_vs_{variable}_thresholdAtleastTwo_{subbasin}.png")
+# # plt.show()
+
+####################################################################################################################
+
+# correlation between threshold variables and dependents
+
+# load tc node files
+tc_allNodes = pd.read_csv("datasets/SyCLoPS/tc_density_allTIDs_perYr_perSb.csv")
+tctd_allNodes = pd.read_csv("datasets/SyCLoPS/tc+td_density_allTIDs_perYr_perSb.csv")
+tc_ogNodes = pd.read_csv("datasets/SyCLoPS/tc_density_uniqueTIDs_perYr_perSb.csv")
+tctd_ogNodes = pd.read_csv("datasets/SyCLoPS/tc+td_density_uniqueTIDs_perYr_perSb.csv")
+
+# rename columns
+tc_allNodes = tc_allNodes.rename(columns={"YEAR": "year", "tc_count": "tc_origins"})
+tctd_allNodes = tctd_allNodes.rename(columns={"YEAR": "year", "tc_count": "tc+td_origins"})
+tc_ogNodes = tc_ogNodes.rename(columns={"YEAR": "year", "tc_count": "tc_all_nodes"})
+tctd_ogNodes = tctd_ogNodes.rename(columns={"YEAR": "year", "tc_count": "tc+td_all_nodes"})
+
+# drop unamed columns
+tc_allNodes = tc_allNodes.loc[:, ~tc_allNodes.columns.str.contains("^Unnamed")]
+tctd_allNodes = tctd_allNodes.loc[:, ~tctd_allNodes.columns.str.contains("^Unnamed")]
+tc_ogNodes = tc_ogNodes.loc[:, ~tc_ogNodes.columns.str.contains("^Unnamed")]
+tctd_ogNodes = tctd_ogNodes.loc[:, ~tctd_ogNodes.columns.str.contains("^Unnamed")]
+
+# print(tc_allNodes.head())
+# print(tctd_allNodes.head())
+# print(tc_ogNodes.head())
+# print(tctd_ogNodes.head())
 
 # merge with variables
-table = (
+tab = (
     annual
     .merge(
-        origins,
+        tc_allNodes,
         on=["year", "sub_basin_name"],
         how="outer"
     )
+    .merge(
+        tctd_allNodes,
+        on=["year", "sub_basin_name"],
+        how="outer"
+    )
+    .merge(
+        tc_ogNodes,
+        on=["year", "sub_basin_name"],
+        how="outer"
+    )
+    .merge(
+        tctd_ogNodes,
+        on=["year", "sub_basin_name"],
+        how="outer"
+    )        
 )
 
-# print(table)
+print(tab)
 
-subbasin = "Mid-latitudinal Atlantic"
-variable = "tc_TH"
+# check correlations
+env_vars = [
+    "sst_TH",
+    "rh600_TH",
+    "shear_TH",
+    "tc_TH_one",
+    "tc_TH_two",
+    "tc_TH"
+]
 
-sb = table[
-    table["sub_basin_name"] == subbasin
-].sort_values("year")
+tc_vars = [
+    "tc_origins",
+    "tc+td_origins",
+    "tc_all_nodes",
+    "tc+td_all_nodes"
+]
 
-plt.figure(figsize=(10, 5))
+corr_results = []
 
-plt.plot(
-    sb["year"],
-    sb["origin_node_count"],
-    label="Origin node count",
-    color="black",
-    linewidth=2
-)
+for sub_basin, group in tab.groupby("sub_basin_name"):
 
-plt.plot(
-    sb["year"],
-    sb[variable],
-    label="Days with All Thresholds Satisfied",
-    color="purple",
-    linewidth=2
-)
+    for env in env_vars:
+        for tc in tc_vars:
 
-plt.title(subbasin)
-plt.xlabel("Year")
-plt.ylabel("Count")
-plt.xlim(1981, 2025)
-plt.legend()
-plt.grid(alpha=0.3)
+            corr = group[env].corr(group[tc])
 
-plt.tight_layout()
+            corr_results.append({
+                "sub_basin_name": sub_basin,
+                "environmental_variable": env,
+                "tc_variable": tc,
+                "correlation": corr
+            })
 
-# plt.savefig(f"images/data_viz/MLR/thresholds/origin_nodes_vs_{variable}_threshold_{subbasin}.png")
-plt.show()
+corr_results = pd.DataFrame(corr_results)
 
+print(corr_results)
+
+# save to csv
+corr_results.to_csv("datasets/data_viz/MLR/thresholds/threshold_variable_correlations.csv")
