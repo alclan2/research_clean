@@ -1,24 +1,23 @@
-import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 import pandas as pd
+import xarray as xr
+import rioxarray
 import cartopy.crs as ccrs
 import geopandas as gpd
 from shapely.geometry import Polygon, MultiPolygon, Point
 from shapely.ops import transform
 import cartopy.feature as cfeature
+import numpy as np
+import regionmask
 import matplotlib.patheffects as pe
 import textwrap
-import matplotlib.colors as colors
-import matplotlib.pyplot as plt
-import xarray as xr
-import glob
-
-# CALCULATING SHEAR USING U AND V COMPONENT MAGNITUDE
 
 # read in basin definition file
 polygons_dict = {}
 
 # read in basin definition file
-with open("tc_basins.dat", "r") as f:
+with open("tc_basins_NAtl.dat", "r") as f:
     for line in f:
         line = line.strip()
         if not line or line.startswith("#"):
@@ -71,7 +70,7 @@ basins["geometry"] = basins["geometry"].apply(
 # read in NAtl subbasin polygons
 sub_polygons_dict = {}
 
-with open("tc_subbasins_NAtl_v5.dat", "r") as f:
+with open("tc_subbasins_NAtl_v4.dat", "r") as f:
     for line in f:
         line = line.strip()
         if not line or line.startswith("#"):
@@ -125,86 +124,78 @@ def shift_lon(geom):
 # shift lon
 sub_basins["geometry"] = sub_basins["geometry"].apply(shift_lon)
 
-#######################################################################################
+##########################################################################################################
 
-# combine u-wind & v-wind files (from NOAA https://downloads.psl.noaa.gov/Datasets/ncep.reanalysis2/Dailies/pressure/)
+# open daily mean files
+ds = xr.open_mfdataset("datasets/COBE2 SST/daily/*.nc")
 
-# remove time bounds variable since we don't need it/mismatched data types across raw files
-def clean(ds):
-    if "time_bnds" in ds:
-        ds = ds.drop_vars("time_bnds")
-    
-    return ds
+# print(ds)
 
-ds1 = xr.open_mfdataset(
-    "datasets/u-wind/*.nc",
-    combine="by_coords",
-    preprocess=clean,
-    chunks={"time": 365}
-)
-
-ds2 = xr.open_mfdataset(
-    "datasets/v-wind/*.nc",
-    combine="by_coords",
-    preprocess=clean,
-    chunks={"time": 365}
-)
-
-uwnd = ds1["uwnd"].sel(level=[850, 200])
-vwnd = ds2["vwnd"].sel(level=[850, 200])
-
-# print(uwnd)
-# print(vwnd)
+# filter to only SST variable
+sst = ds["sst"]
 
 # convert lon to -180-180
-uwnd = uwnd.assign_coords(
-    lon=(((uwnd.lon + 180) % 360) - 180)
-).sortby("lon")
-vwnd = vwnd.assign_coords(
-    lon=(((vwnd.lon + 180) % 360) - 180)
+sst = sst.assign_coords(
+    lon=(((sst.lon + 180) % 360) - 180)
 ).sortby("lon")
 
 # add CRS and spatial dims
-uwnd = uwnd.rio.write_crs("EPSG:4326")
-uwnd = uwnd.rio.set_spatial_dims(x_dim="lon", y_dim="lat")
-vwnd = vwnd.rio.write_crs("EPSG:4326")
-vwnd = vwnd.rio.set_spatial_dims(x_dim="lon", y_dim="lat")
+sst = sst.rio.write_crs("EPSG:4326")
+sst = sst.rio.set_spatial_dims(x_dim="lon", y_dim="lat")
 
-# filter to N Atl
+# filter to N Atlantic basin
 region = basins[basins["basin name"] == "N Atlantic"]
-uwnd = uwnd.rio.clip(region.geometry, region.crs, drop=True)
-vwnd = vwnd.rio.clip(region.geometry, region.crs, drop=True)
 
-# filter to hurricane season
-uwnd = (
-    uwnd
-    .where(uwnd.time.dt.month.isin([6, 7, 8, 9, 10]), drop=True)
-    .rio.clip(region.geometry, region.crs, drop=True)
-)
-vwnd = (
-    vwnd
-    .where(vwnd.time.dt.month.isin([6, 7, 8, 9, 10]), drop=True)
+# filter to hurricane season (and filter date range to match SyCLoPS)
+sst_filt = (
+    sst
+    .sel(time=slice("1940-01-01", "2025-12-31"))
+    .where(lambda x: x.time.dt.month.isin([6, 7, 8, 9, 10]), drop=True)
     .rio.clip(region.geometry, region.crs, drop=True)
 )
 
-# print(uwnd)
-# print(vwnd)
 
-# calc shear
-u850 = uwnd.sel(level=850)
-v850 = vwnd.sel(level=850)
 
-u200 = uwnd.sel(level=200)
-v200 = vwnd.sel(level=200)
 
-shear = np.sqrt(
-    (u850 - u200)**2 +
-    (v850 - v200)**2
+# Create mask for each sub-basin
+mask = regionmask.Regions(
+    sub_basins.geometry.tolist(),
+    names=sub_basins["sub_basin_name"].tolist()
 )
 
-# shear_monthly = shear.resample(time="1MS").mean()
+results = []
 
-print(shear)
+for i, subbasin in enumerate(sub_basins["sub_basin_name"]):
 
-# save 
-shear.to_netcdf("datasets/GPI/GPI_EN_calc/shear_850_200_daily_v2.nc")
+    print(f"Processing {subbasin}...")
+
+    # Keep only SST pixels inside this sub-basin
+    sb_sst = sst_filt.where(
+        mask.mask(sst_filt) == i
+    )
+
+    # Calculate daily spatial mean
+    daily_mean = sb_sst.mean(
+        dim=["lat", "lon"],
+        skipna=True
+    )
+
+    # Convert to dataframe
+    temp = daily_mean.to_dataframe(
+        name="mean"
+    ).reset_index()
+
+    temp["sub_basin_name"] = subbasin
+
+    results.append(temp)
+
+daily_table = pd.concat(
+    results,
+    ignore_index=True
+)
+
+print(daily_table.head())
+print(daily_table.shape)
+
+# save to csv
+daily_table.to_csv("datasets/COBE2 SST/post-processing/sst_daily_mean_bySubbasin_table_v2.csv", index=False)

@@ -199,7 +199,7 @@ gdf = gpd.sjoin(
     predicate="within",   # or "intersects"
 )
 
-# print(gdf)
+print(gdf)
 
 # add year column
 gdf['year'] = gdf['time'].dt.year
@@ -211,10 +211,10 @@ ts = (
        .reset_index()
 )
 
-print(ts)
+# print(ts)
 
 # save to csv
-ts.to_csv("datasets/potential_intensity/vmax_mean_perYr_perSb.csv")
+# ts.to_csv("datasets/potential_intensity/vmax_mean_perYr_perSb.csv")
 
 # # Number of sub-basins
 # n = len(ts.columns)

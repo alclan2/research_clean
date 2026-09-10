@@ -156,22 +156,21 @@ sst_filt = (
     .rio.clip(region.geometry, region.crs, drop=True)
 )
 
-## calculate the mean SST (not for anomaly calc)
-#annual_mean = sst_filt.groupby("time.year").mean("time") 
+# calculate the mean SST (not for anomaly calc)
+daily_mean = sst_filt.resample(time="1D").mean()
 
-# calculate the climatological mean
-monthly_clim = sst_filt.groupby("time.month").mean("time")
+# # calculate the climatological mean
+# monthly_clim = sst_filt.groupby("time.month").mean("time")
 
-# calculate the sst anomaly
-sst_anom = sst_filt.groupby("time.month") - monthly_clim
+# # calculate the sst anomaly
+# sst_anom = sst_filt.groupby("time.month") - monthly_clim
 
-#print(sst_anom)
+print(daily_mean)
 
 # save filtered datasets
-sst_anom.to_netcdf("datasets/COBE2 SST/post-processing/SST_mon_mean_anom_1940-2024_clim_jun_oct.nc")
+daily_mean.to_netcdf("datasets/COBE2 SST/post-processing/SST_daily_mean_1940-2024_clim_jun_oct.nc")
 
 #print(sst_anom.head())
-
 
 #####################################################################################
 

@@ -125,47 +125,49 @@ sub_basins["geometry"] = sub_basins["geometry"].apply(shift_lon)
 
 #################################################################################################################
 
-# # combine relative humidity files (from NOAA https://downloads.psl.noaa.gov/Datasets/ncep.reanalysis2/Dailies/pressure/)
-# ds = xr.open_mfdataset(
-#     "datasets/RHUM/*.nc",
-#     combine = "by_coords",
-#     preprocess=lambda ds: ds.drop_vars("time_bnds", errors="ignore"),
-# )
+# combine relative humidity files (from NOAA https://downloads.psl.noaa.gov/Datasets/ncep.reanalysis2/Dailies/pressure/)
+ds = xr.open_mfdataset(
+    "datasets/RHUM/*.nc",
+    combine = "by_coords",
+    preprocess=lambda ds: ds.drop_vars("time_bnds", errors="ignore"),
+)
 
-# #print(ds)
+#print(ds)
 
-# # select the RHUM variable
-# rhum = ds["rhum"]
+# select the RHUM variable
+rhum = ds["rhum"]
 
-# # convert lon to -180-180
-# rhum = rhum.assign_coords(
-#     lon=(((rhum.lon + 180) % 360) - 180)
-# ).sortby("lon")
+# convert lon to -180-180
+rhum = rhum.assign_coords(
+    lon=(((rhum.lon + 180) % 360) - 180)
+).sortby("lon")
 
-# # filter to relative humidity to a specific pressure level only
-# rhum600 = rhum.sel(level=600)
+# filter to relative humidity to a specific pressure level only
+rhum600 = rhum.sel(level=600)
+
+# print(rhum600.head())
 
 # # roll up to monthly means
 # rhum600_monthly = rhum600.resample(time="MS").mean()
 
-# # add CRS and spatial dims
-# rhum600_monthly = rhum600_monthly.rio.write_crs("EPSG:4326")
-# rhum600_monthly = rhum600_monthly.rio.set_spatial_dims(x_dim="lon", y_dim="lat")
+# add CRS and spatial dims
+rhum600 = rhum600.rio.write_crs("EPSG:4326")
+rhum600 = rhum600.rio.set_spatial_dims(x_dim="lon", y_dim="lat")
 
-# # filter to N Atlantic basin
-# region = basins[basins["basin name"] == "N Atlantic"]
+# filter to N Atlantic basin
+region = basins[basins["basin name"] == "N Atlantic"]
 
-# # filter to hurricane season
-# rhum600_full = (
-#     rhum600_monthly
-#     .where(rhum600_monthly.time.dt.month.isin([6, 7, 8, 9, 10]), drop=True)
-#     .rio.clip(region.geometry, region.crs, drop=True)
-# )
+# filter to hurricane season
+rhum600_full = (
+    rhum600
+    .where(rhum600.time.dt.month.isin([6, 7, 8, 9, 10]), drop=True)
+    .rio.clip(region.geometry, region.crs, drop=True)
+)
 
-# print(rhum600_full.head())
+print(rhum600_full.head())
 
-# # save monthly RH means to dataset (NOT ANOM)
-# rhum600_full.to_netcdf("datasets/RHUM/post-processing/RHUM600_mon_mean_1979-2025.nc")
+# save monthly RH means to dataset (NOT ANOM)
+rhum600_full.to_netcdf("datasets/RHUM/post-processing/RHUM600_daily_mean_1979-2025.nc")
 
 # ######################################################################################
 
@@ -316,67 +318,67 @@ sub_basins["geometry"] = sub_basins["geometry"].apply(shift_lon)
 
 #######################################################################################
 
-# timeseries of RH anom per sub basin
+# # timeseries of RH anom per sub basin
 
-# read in MSLP anom dataset
-ds = xr.open_dataset(r"datasets/RHUM/post-processing/RHUM600_mon_mean_1979-2025.nc")
+# # read in MSLP anom dataset
+# ds = xr.open_dataset(r"datasets/RHUM/post-processing/RHUM600_mon_mean_1979-2025.nc")
 
-rh = ds['rhum']
+# rh = ds['rhum']
 
-# print(rh)
+# # print(rh)
 
-# convert to dataframe
-df = rh.to_dataframe().reset_index()
+# # convert to dataframe
+# df = rh.to_dataframe().reset_index()
 
-# convert LAT and LON to a new column Points which contains (lon, lat) and convert to a geo data frame so we can filter using polygons
-df_points = gpd.GeoDataFrame(
-    df, 
-    geometry = gpd.points_from_xy(df.lon, df.lat),
-    crs = "EPSG:4326"
-)
+# # convert LAT and LON to a new column Points which contains (lon, lat) and convert to a geo data frame so we can filter using polygons
+# df_points = gpd.GeoDataFrame(
+#     df, 
+#     geometry = gpd.points_from_xy(df.lon, df.lat),
+#     crs = "EPSG:4326"
+# )
 
-# convert lon to -180-180 from 0-360
-df_points['lon'] = ((df_points['lon'] + 180) % 360) - 180
+# # convert lon to -180-180 from 0-360
+# df_points['lon'] = ((df_points['lon'] + 180) % 360) - 180
 
-# print(df_points.head())
+# # print(df_points.head())
 
-# filter points to North Atlantic
-df_filtered = gpd.sjoin(
-    df_points,
-    basins[basins["basin name"] == "N Atlantic"],
-    how = "inner",
-    predicate = "within"
-)
+# # filter points to North Atlantic
+# df_filtered = gpd.sjoin(
+#     df_points,
+#     basins[basins["basin name"] == "N Atlantic"],
+#     how = "inner",
+#     predicate = "within"
+# )
 
-# add Year column so we can create a timeseries
-df_filtered['year'] = df_filtered['time'].dt.year
+# # add Year column so we can create a timeseries
+# df_filtered['year'] = df_filtered['time'].dt.year
 
-# join sub basin name for starting and ending points
-df_gdf = gpd.GeoDataFrame(
-    df_filtered,
-    geometry=gpd.points_from_xy(
-        df_filtered.lon,
-        df_filtered.lat
-    ),
-    crs=sub_basins.crs
-)
+# # join sub basin name for starting and ending points
+# df_gdf = gpd.GeoDataFrame(
+#     df_filtered,
+#     geometry=gpd.points_from_xy(
+#         df_filtered.lon,
+#         df_filtered.lat
+#     ),
+#     crs=sub_basins.crs
+# )
 
-# drop index_right column before joining again
-df_gdf = df_gdf.drop(columns="index_right", errors="ignore")
+# # drop index_right column before joining again
+# df_gdf = df_gdf.drop(columns="index_right", errors="ignore")
 
-df_join = gpd.sjoin(
-    df_gdf,
-    sub_basins[['sub_basin_name', 'geometry']],
-    how='left',
-    predicate='within'
-)
+# df_join = gpd.sjoin(
+#     df_gdf,
+#     sub_basins[['sub_basin_name', 'geometry']],
+#     how='left',
+#     predicate='within'
+# )
 
-# print(df_join)
+# # print(df_join)
 
-# filter out sub basins outside the atlantic
-df_join = df_join.dropna(subset=['sub_basin_name'])
+# # filter out sub basins outside the atlantic
+# df_join = df_join.dropna(subset=['sub_basin_name'])
 
-df_join = df_join[['time', 'lat', 'lon', 'rhum', 'year', 'sub_basin_name']]
+# df_join = df_join[['time', 'lat', 'lon', 'rhum', 'year', 'sub_basin_name']]
 
 # print(df_join)
 
