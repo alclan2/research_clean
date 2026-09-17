@@ -304,7 +304,7 @@ tc_vars = [
 
 # bar chart of days per year satisfied vs. origin nodes
 sb = 'Mid-latitudinal Atlantic'
-columns = ["tc_TH_two", "tc+td_all_nodes"]
+columns = ["tc_TH_two", "tc_origins"]
 
 plot_df = (
     tab[tab["sub_basin_name"] == sb]
@@ -318,7 +318,7 @@ width = 0.4
 fig, ax = plt.subplots(figsize=(12, 5))
 
 ax.bar(x - width/2, plot_df["tc_TH_two"], width, label="Days per Year Two Thresholds Are Met")
-ax.bar(x + width/2, plot_df["tc+td_all_nodes"], width, label="TC+TD occurrences")
+ax.bar(x + width/2, plot_df["tc_origins"], width, label="TC origins")
 
 # mark every 5th year
 ax.set_xticks(x[::5])
@@ -326,9 +326,9 @@ ax.set_xticklabels(plot_df["year"].iloc[::5])
 
 ax.set_xlabel("Year")
 ax.set_ylabel("Count")
-ax.set_title(f"Days Thresholds Are Satisfied vs. TC+TD Occurrences - {sb}")
+ax.set_title(f"Days Thresholds Are Satisfied vs. TC Origins - {sb}")
 ax.legend()
 
 plt.tight_layout()
-plt.savefig(f"images/data_viz/MLR/thresholds/TC+TD_allNodes/threshold_atleastTwo_vs_tc+tdAllNodes_barChart_{sb}.png")
+plt.savefig(f"images/data_viz/MLR/thresholds/TC_origins/threshold_atleastTwo_vs_tcOrigins_barChart_{sb}.png")
 plt.show()
