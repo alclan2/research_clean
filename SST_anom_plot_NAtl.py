@@ -69,29 +69,27 @@ def shift_lon(geom):
 # shift lon
 sub_basins["geometry"] = sub_basins["geometry"].apply(shift_lon)
 
-
-
-
+##############################################################################################################
 
 # read in SST anom dataset
-ds = xr.open_dataset(r"datasets/COBE2 SST/post-processing/SST_mon_mean_anom_moving_window_jun_oct.nc")
+ds = xr.open_dataset(r"datasets/COBE2 SST/post-processing/SST_daily_mean_1940-2024_clim_jun_oct.nc")
 
 print(ds)
 
-# plot the sst's for hurricane season
-fig = plt.figure(figsize=(8,6))
-ax = plt.axes(projection=ccrs.PlateCarree()) 
+# # plot the sst's for hurricane season
+# fig = plt.figure(figsize=(8,6))
+# ax = plt.axes(projection=ccrs.PlateCarree()) 
 
-# Plot sub-basins first
-sub_basins.plot(
-    ax=ax,
-    facecolor='none',
-    edgecolor='red',
-    path_effects=[pe.withStroke(linewidth=3, foreground='white')],
-    linewidth=1,
-    transform=ccrs.PlateCarree(),
-    zorder=4
-)
+# # Plot sub-basins first
+# sub_basins.plot(
+#     ax=ax,
+#     facecolor='none',
+#     edgecolor='red',
+#     path_effects=[pe.withStroke(linewidth=3, foreground='white')],
+#     linewidth=1,
+#     transform=ccrs.PlateCarree(),
+#     zorder=4
+# )
 
 #sst_mean_szn.plot(
 #    ax=ax,

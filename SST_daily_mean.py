@@ -154,9 +154,6 @@ sst_filt = (
     .rio.clip(region.geometry, region.crs, drop=True)
 )
 
-
-
-
 # Create mask for each sub-basin
 mask = regionmask.Regions(
     sub_basins.geometry.tolist(),
@@ -198,4 +195,4 @@ print(daily_table.head())
 print(daily_table.shape)
 
 # save to csv
-daily_table.to_csv("datasets/COBE2 SST/post-processing/sst_daily_mean_bySubbasin_table_v2.csv", index=False)
+# daily_table.to_csv("datasets/COBE2 SST/post-processing/sst_daily_mean_bySubbasin_table_v2.csv", index=False)

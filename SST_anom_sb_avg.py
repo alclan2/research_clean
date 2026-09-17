@@ -117,16 +117,18 @@ sub_basins["geometry"] = sub_basins["geometry"].apply(shift_lon)
 basins["geometry"] = basins["geometry"].apply(shift_lon)
 
 #######################################################################################################
-# read in anom net cdf
-ds = xr.open_dataset("datasets/COBE2 SST/post-processing/SST_daily_mean_1940-2024_clim_jun_oct.nc")
+# # read in anom net cdf
+# ds = pd.read_csv("datasets/COBE2 SST/post-processing/sst_daily_mean_bySubbasin_table_v2.csv")
 
-# get the SST variable
-sst = ds["sst"]
+# print(ds)
+
+# # get the SST variable
+# sst = ds["sst"]
 
 # # convert to a dataframe
 # df = ds['sst'].to_dataframe(name = 'mean').reset_index()
 
-# # print(df)
+# # print(df.head())
 
 # # join sub basins
 # points = gpd.GeoDataFrame(
@@ -188,12 +190,12 @@ sst = ds["sst"]
 # # save to csv
 # # annual_table.to_csv("datasets/COBE2 SST/post-processing/sst_annual_mean_bySubbasin_table.csv")
 
-# # #######################################################################################################
+#######################################################################################################
 
-# # # # plot mean SST anom as a time series per sub basin
+# plot mean SST anom as a time series per sub basin
 
-# # # # select sub basin
-# # # sb = 'Deep Tropics'
+# # select sub basin
+# sb = 'Gulf (A)'
 
 # # # # pivot to have sub basins be column heads
 # # # sst_piv = df.pivot_table(
@@ -219,3 +221,42 @@ sst = ds["sst"]
 
 # # # #plt.savefig(f"images/data_viz/MSLP/timeseries/tc_mslp_timeseries_{sb}_v2.png")
 # # # plt.show()
+
+#######################################################################################################
+
+# read in anom net cdf
+ds = pd.read_csv("datasets/COBE2 SST/post-processing/sst_anom_moving_window_bySubbasin_table.csv")
+
+# print(ds)
+
+# # make sure time is datetime
+# ds["year"] = pd.to_datetime(ds["year"])
+
+# choose the two sub-basins
+sbs = ["Gulf (A)", "Gulf (B)"]
+
+# filter to sub basins
+ds_plot = ds[ds["sub_basin_name"].isin(sbs)]
+
+# print(ds_plot)
+
+# plot
+fig, ax = plt.subplots(figsize=(12, 6))
+
+for subbasin in sbs:
+    subset = ds_plot[ds_plot["sub_basin_name"] == subbasin]
+    ax.plot(
+        subset["year"],
+        subset["mean_anom"],
+        label=subbasin
+    )
+
+ax.set_xlabel("Year")
+ax.set_ylabel("Annual SST Anomaly (°C)")
+ax.set_title("Gulf SST Anomaly Comparison")
+ax.legend()
+ax.grid(True, alpha=0.3)
+
+plt.tight_layout()
+plt.savefig("images/data_viz/SST/anom/SST_annualAnom_gulf_comparison.png")
+plt.show()
