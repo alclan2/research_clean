@@ -262,73 +262,76 @@ tab = (
 
 print(tab)
 
-# check correlations
-env_vars = [
-    "sst_TH",
-    "rh600_TH",
-    "shear_TH",
-    "tc_TH",
-    "tc_TH_one",
-    "tc_TH_two"
-]
+# save merged table to csv
+tab.to_csv("datasets/data_viz/MLR/thresholds/threshold_days_perYr_table.csv", index=False)
 
-tc_vars = [
-    "tc_origins",
-    "tc+td_origins",
-    "tc_all_nodes",
-    "tc+td_all_nodes"
-]
+# # check correlations
+# env_vars = [
+#     "sst_TH",
+#     "rh600_TH",
+#     "shear_TH",
+#     "tc_TH",
+#     "tc_TH_one",
+#     "tc_TH_two"
+# ]
 
-# corr_results = []
+# tc_vars = [
+#     "tc_origins",
+#     "tc+td_origins",
+#     "tc_all_nodes",
+#     "tc+td_all_nodes"
+# ]
 
-# for sub_basin, group in tab.groupby("sub_basin_name"):
+# # corr_results = []
 
-#     for env in env_vars:
-#         for tc in tc_vars:
+# # for sub_basin, group in tab.groupby("sub_basin_name"):
 
-#             corr = group[env].corr(group[tc])
+# #     for env in env_vars:
+# #         for tc in tc_vars:
 
-#             corr_results.append({
-#                 "sub_basin_name": sub_basin,
-#                 "environmental_variable": env,
-#                 "tc_variable": tc,
-#                 "correlation": corr
-#             })
+# #             corr = group[env].corr(group[tc])
 
-# corr_results = pd.DataFrame(corr_results)
+# #             corr_results.append({
+# #                 "sub_basin_name": sub_basin,
+# #                 "environmental_variable": env,
+# #                 "tc_variable": tc,
+# #                 "correlation": corr
+# #             })
 
-# print(corr_results)
+# # corr_results = pd.DataFrame(corr_results)
 
-# # save to csv
-# corr_results.to_csv("datasets/data_viz/MLR/thresholds/MSLP_threshold_variable_correlations.csv")
+# # print(corr_results)
 
-# bar chart of days per year satisfied vs. origin nodes
-sb = 'Mid-latitudinal Atlantic'
-columns = ["tc_TH_two", "tc_origins"]
+# # # save to csv
+# # corr_results.to_csv("datasets/data_viz/MLR/thresholds/MSLP_threshold_variable_correlations.csv")
 
-plot_df = (
-    tab[tab["sub_basin_name"] == sb]
-    .dropna(subset=columns)
-    .copy()
-)
+# # bar chart of days per year satisfied vs. origin nodes
+# sb = 'Mid-latitudinal Atlantic'
+# columns = ["tc_TH_two", "tc_origins"]
 
-x = np.arange(len(plot_df))
-width = 0.4
+# plot_df = (
+#     tab[tab["sub_basin_name"] == sb]
+#     .dropna(subset=columns)
+#     .copy()
+# )
 
-fig, ax = plt.subplots(figsize=(12, 5))
+# x = np.arange(len(plot_df))
+# width = 0.4
 
-ax.bar(x - width/2, plot_df["tc_TH_two"], width, label="Days per Year Two Thresholds Are Met")
-ax.bar(x + width/2, plot_df["tc_origins"], width, label="TC origins")
+# fig, ax = plt.subplots(figsize=(12, 5))
 
-# mark every 5th year
-ax.set_xticks(x[::5])
-ax.set_xticklabels(plot_df["year"].iloc[::5])
+# ax.bar(x - width/2, plot_df["tc_TH_two"], width, label="Days per Year Two Thresholds Are Met")
+# ax.bar(x + width/2, plot_df["tc_origins"], width, label="TC origins")
 
-ax.set_xlabel("Year")
-ax.set_ylabel("Count")
-ax.set_title(f"Days Thresholds Are Satisfied vs. TC Origins - {sb}")
-ax.legend()
+# # mark every 5th year
+# ax.set_xticks(x[::5])
+# ax.set_xticklabels(plot_df["year"].iloc[::5])
 
-plt.tight_layout()
-plt.savefig(f"images/data_viz/MLR/thresholds/TC_origins/threshold_atleastTwo_vs_tcOrigins_barChart_{sb}.png")
-plt.show()
+# ax.set_xlabel("Year")
+# ax.set_ylabel("Count")
+# ax.set_title(f"Days Thresholds Are Satisfied vs. TC Origins - {sb}")
+# ax.legend()
+
+# plt.tight_layout()
+# plt.savefig(f"images/data_viz/MLR/thresholds/TC_origins/threshold_atleastTwo_vs_tcOrigins_barChart_{sb}.png")
+# plt.show()
