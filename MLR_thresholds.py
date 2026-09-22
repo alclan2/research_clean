@@ -77,7 +77,31 @@ annual = (
 # mslp = mslp[['year', 'sub_basin_name', 'days_below_threshold']]
 # mslp = mslp.rename(columns={"days_below_threshold": "mslp_TH"})
 
-# print(mslp)
+# load gpi data
+gpi = pd.read_csv("datasets/GPI/GPI_EN_calc/gpi_monthly_mean_bySubbasin_table.csv")
+
+# filter columns
+gpi = gpi[['time', 'sub_basin_name', 'mean']]
+
+# rename columns
+gpi = gpi.rename(columns={"time": "date", "mean": "gpi"})
+
+# create gpi threshold column
+gpi['gpi_mean_sub_basin'] = (
+    gpi.groupby('sub_basin_name')['gpi']
+      .transform('mean')
+)
+gpi['gpi_TH'] = (gpi['gpi'] > gpi['gpi_mean_sub_basin']).astype(int)
+
+# pivot by year to get the number of MONTHS on average GPI is higher than the mean
+gpi['year'] = pd.to_datetime(gpi['date']).dt.year
+gpi_piv = (
+    gpi.groupby(['year', 'sub_basin_name'])['gpi_TH']
+      .sum()
+      .reset_index()
+)
+
+# print(gpi_piv)
 
 # # plot 
 # variables = ["mslp_TH"]
@@ -138,42 +162,42 @@ annual = (
 
 ####################################################################################################################
 
-# # load origin node file
-# ds = pd.read_csv("datasets/SyCLoPS/tc_density_allTIDs_perYr_perSb.csv")
+# load origin node file
+ds = pd.read_csv("datasets/SyCLoPS/tc_density_allTIDs_perYr_perSb.csv")
 
-# # # print(ds.head())
+# print(ds.head())
 
-# # reformat 
-# origins = ds.rename(
-#     columns={
-#         "YEAR": "year",
-#         "sub_basin_name": "sub_basin",
-#         "tc_count": "origin_node_count"
-#     }
-# )[["year", "sub_basin", "origin_node_count"]]
+# reformat 
+origins = ds.rename(
+    columns={
+        "YEAR": "year",
+        "sub_basin_name": "sub_basin",
+        "tc_count": "origin_node_count"
+    }
+)[["year", "sub_basin", "origin_node_count"]]
 
-# # print(origins.head())
+# print(origins.head())
 
-# # rename 
-# origins = origins.rename(columns={"sub_basin": "sub_basin_name"})
+# rename 
+origins = origins.rename(columns={"sub_basin": "sub_basin_name"})
 
-# # # print(origins)
-# # # print(mslp)
+# print(origins)
+# print(gpi_piv)
 
-# # merge with variables
-# table = (
-#     mslp
-#     .merge(
-#         origins,
-#         on=["year", "sub_basin_name"],
-#         how="outer"
-#     )
-# )
+# merge with variables
+table = (
+    gpi_piv
+    .merge(
+        origins,
+        on=["year", "sub_basin_name"],
+        how="outer"
+    )
+)
 
-# # # print(table)
+# print(table)
 
-# subbasin = "Mid-latitudinal Atlantic"
-# variable = "mslp_TH"
+# subbasin = "Eastern Tropics"
+# variable = "gpi_TH"
 
 # sb = table[
 #     table["sub_basin_name"] == subbasin
@@ -192,7 +216,7 @@ annual = (
 # plt.plot(
 #     sb["year"],
 #     sb[variable],
-#     label="Days with MSLP Threshold Satisfied",
+#     label="Days with Above Average GPI",
 #     color="purple",
 #     linewidth=2
 # )
@@ -200,7 +224,7 @@ annual = (
 # plt.title(subbasin)
 # plt.xlabel("Year")
 # plt.ylabel("Count")
-# plt.xlim(1981, 2025)
+# plt.xlim(1978, 2025)
 # plt.legend()
 # plt.grid(alpha=0.3)
 
@@ -237,7 +261,7 @@ tctd_ogNodes = tctd_ogNodes.loc[:, ~tctd_ogNodes.columns.str.contains("^Unnamed"
 
 # merge with variables
 tab = (
-    annual
+    gpi_piv
     .merge(
         tc_allNodes,
         on=["year", "sub_basin_name"],
@@ -260,78 +284,73 @@ tab = (
     )        
 )
 
-print(tab)
+# print(tab)
 
 # save merged table to csv
-tab.to_csv("datasets/data_viz/MLR/thresholds/threshold_days_perYr_table.csv", index=False)
+# tab.to_csv("datasets/data_viz/MLR/thresholds/threshold_days_perYr_table.csv", index=False)
 
-# # check correlations
-# env_vars = [
-#     "sst_TH",
-#     "rh600_TH",
-#     "shear_TH",
-#     "tc_TH",
-#     "tc_TH_one",
-#     "tc_TH_two"
-# ]
+# check correlations
+env_vars = [
+    "gpi_TH"
+]
 
-# tc_vars = [
-#     "tc_origins",
-#     "tc+td_origins",
-#     "tc_all_nodes",
-#     "tc+td_all_nodes"
-# ]
+tc_vars = [
+    "tc_origins",
+    "tc+td_origins",
+    "tc_all_nodes",
+    "tc+td_all_nodes"
+]
 
-# # corr_results = []
+corr_results = []
 
-# # for sub_basin, group in tab.groupby("sub_basin_name"):
+for sub_basin, group in tab.groupby("sub_basin_name"):
 
-# #     for env in env_vars:
-# #         for tc in tc_vars:
+    for env in env_vars:
+        for tc in tc_vars:
 
-# #             corr = group[env].corr(group[tc])
+            corr = group[env].corr(group[tc])
 
-# #             corr_results.append({
-# #                 "sub_basin_name": sub_basin,
-# #                 "environmental_variable": env,
-# #                 "tc_variable": tc,
-# #                 "correlation": corr
-# #             })
+            corr_results.append({
+                "sub_basin_name": sub_basin,
+                "environmental_variable": env,
+                "tc_variable": tc,
+                "correlation": corr
+            })
 
-# # corr_results = pd.DataFrame(corr_results)
+corr_results = pd.DataFrame(corr_results)
 
-# # print(corr_results)
+# print(corr_results)
 
-# # # save to csv
-# # corr_results.to_csv("datasets/data_viz/MLR/thresholds/MSLP_threshold_variable_correlations.csv")
+# # save to csv
+# corr_results.to_csv("datasets/data_viz/MLR/thresholds/GPI_threshold_variable_correlations.csv")
 
-# # bar chart of days per year satisfied vs. origin nodes
-# sb = 'Mid-latitudinal Atlantic'
-# columns = ["tc_TH_two", "tc_origins"]
+# bar chart of days per year satisfied vs. origin nodes
+sb = 'Eastern Tropics'
+columns = ["gpi_TH", "tc+td_origins"]
 
-# plot_df = (
-#     tab[tab["sub_basin_name"] == sb]
-#     .dropna(subset=columns)
-#     .copy()
-# )
+plot_df = (
+    tab[tab["sub_basin_name"] == sb]
+    .dropna(subset=columns)
+    .copy()
+)
 
-# x = np.arange(len(plot_df))
-# width = 0.4
+x = np.arange(len(plot_df))
+width = 0.4
 
-# fig, ax = plt.subplots(figsize=(12, 5))
+fig, ax = plt.subplots(figsize=(12, 5))
 
-# ax.bar(x - width/2, plot_df["tc_TH_two"], width, label="Days per Year Two Thresholds Are Met")
-# ax.bar(x + width/2, plot_df["tc_origins"], width, label="TC origins")
+ax.bar(x - width/2, plot_df["gpi_TH"], width, label="Months per Year GPI is Above Average")
+ax.bar(x + width/2, plot_df["tc+td_origins"], width, label="TC+TD origins")
 
-# # mark every 5th year
-# ax.set_xticks(x[::5])
-# ax.set_xticklabels(plot_df["year"].iloc[::5])
+# mark every 5th year
+ax.set_xticks(x[::5])
+ax.set_xticklabels(plot_df["year"].iloc[::5])
 
-# ax.set_xlabel("Year")
-# ax.set_ylabel("Count")
-# ax.set_title(f"Days Thresholds Are Satisfied vs. TC Origins - {sb}")
-# ax.legend()
+ax.set_xlabel("Year")
+ax.set_ylabel("Count")
+ax.set_title(f"Months GPI is Above Average vs. TC+TD Origins - {sb}")
+ax.legend()
 
-# plt.tight_layout()
-# plt.savefig(f"images/data_viz/MLR/thresholds/TC_origins/threshold_atleastTwo_vs_tcOrigins_barChart_{sb}.png")
-# plt.show()
+plt.tight_layout()
+# plt.savefig(f"images/data_viz/MLR/thresholds/TC+TD_origins/threshold_GPI_vs_tctdOrigins_barChart_{sb}.png")
+plt.show()

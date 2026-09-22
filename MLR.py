@@ -228,7 +228,7 @@ merged = (
 # filter to time period where data exists across all variables
 merged = merged[(merged["year"] >= 1940) & (merged["year"] <= 2025)]
 
-# print(merged)
+print(merged)
 
 variables = merged.select_dtypes(include="number").columns.drop("year")
 
@@ -237,154 +237,154 @@ corr_by_subbasin = (
       .corr()
 )
 
-print(corr_by_subbasin)
+# print(corr_by_subbasin)
 
 # save corr table to csv
-corr_by_subbasin.to_csv("datasets/data_viz/MLR/independent_vars_correl_table_perSb_v3_runs.csv")
+# corr_by_subbasin.to_csv("datasets/data_viz/MLR/independent_vars_correl_table_perSb_v3_runs.csv")
 
 ########################################################################################################################
 
-# # standardize variables for MLR
-# predictors = ['sst_mean', 'shear', 'gpi', 'rh600', 'uwind_raw']
+# standardize variables for MLR
+predictors = ['shear', 'mslp_mean', 'gpi', 'rh600']
 
-# # save MLR results
-# results = {}
+# save MLR results
+results = {}
 
-# # save actual vs. predicted
-# predictions = {}
+# save actual vs. predicted
+predictions = {}
 
-# for basin, group in merged.groupby("sub_basin_name"):
+for basin, group in merged.groupby("sub_basin_name"):
 
-#     # remove rows with missing values
-#     group = group.dropna(
-#         subset=["origin_node_count"] + predictors
-#     )
+    # remove rows with missing values
+    group = group.dropna(
+        subset=["origin_node_count"] + predictors
+    )
 
-#     # skip if too few observations or no variation in response
-#     if len(group) < 10:
-#         continue
+    # skip if too few observations or no variation in response
+    if len(group) < 10:
+        continue
 
-#     if group["origin_node_count"].nunique() < 2:
-#         continue
+    if group["origin_node_count"].nunique() < 2:
+        continue
 
-#     # standardize predictors
-#     group = group.copy()
+    # standardize predictors
+    group = group.copy()
 
-#     scaler = StandardScaler()
-#     group[predictors] = scaler.fit_transform(group[predictors])
+    scaler = StandardScaler()
+    group[predictors] = scaler.fit_transform(group[predictors])
 
-#     model = smf.ols(
-#         "origin_node_count ~ sst_mean + shear + gpi + rh600 + uwind_raw",
-#         data=group
-#     ).fit()
+    model = smf.ols(
+        "origin_node_count ~ shear + mslp_mean + gpi + rh600",
+        data=group
+    ).fit()
 
-#     results[basin] = model
+    results[basin] = model
 
-#     predictions[basin] = pd.DataFrame({
-#         "Actual": group["origin_node_count"],
-#         "Predicted": model.fittedvalues
-# })  
+    predictions[basin] = pd.DataFrame({
+        "Actual": group["origin_node_count"],
+        "Predicted": model.fittedvalues
+})  
 
-#     # print(basin)
-#     # print(results[basin].summary())
-#     # print(f"{basin}: condition number = {model.condition_number:.1f}")
+    # print(basin)
+    # print(results[basin].summary())
+    # print(f"{basin}: condition number = {model.condition_number:.1f}")
 
-# # combine results into one table per subbasin
-# coef_results = []
+# combine results into one table per subbasin
+coef_results = []
 
-# for basin, model in results.items():
+for basin, model in results.items():
 
-#     row = {
-#         "sub_basin": basin,
-#         "R2": model.rsquared,
-#         "adj_R2": model.rsquared_adj,
-#         "n": int(model.nobs)
-#     }
+    row = {
+        "sub_basin": basin,
+        "R2": model.rsquared,
+        "adj_R2": model.rsquared_adj,
+        "n": int(model.nobs)
+    }
 
-#     # add coefficients
-#     for predictor, coef in model.params.items():
-#         row[f"{predictor}_coef"] = coef
+    # add coefficients
+    for predictor, coef in model.params.items():
+        row[f"{predictor}_coef"] = coef
 
-#     # add p-values
-#     for predictor, pval in model.pvalues.items():
-#         row[f"{predictor}_pval"] = pval
+    # add p-values
+    for predictor, pval in model.pvalues.items():
+        row[f"{predictor}_pval"] = pval
 
-#     # add 95% confidence intervals
-#     conf_int = model.conf_int()
-#     for predictor in model.params.index:
-#         row[f"{predictor}_CI_lower"] = conf_int.loc[predictor, 0]
-#         row[f"{predictor}_CI_upper"] = conf_int.loc[predictor, 1]
+    # add 95% confidence intervals
+    conf_int = model.conf_int()
+    for predictor in model.params.index:
+        row[f"{predictor}_CI_lower"] = conf_int.loc[predictor, 0]
+        row[f"{predictor}_CI_upper"] = conf_int.loc[predictor, 1]
 
 
-#     coef_results.append(row)
+    coef_results.append(row)
 
-# # choose sub-basin
-# sb = "Subtropical Atlantic"
+# choose sub-basin
+sb = "Southeastern Seaboard"
 
-# coef_df = pd.DataFrame(coef_results)
+coef_df = pd.DataFrame(coef_results)
 
-# print(coef_df[coef_df['sub_basin']==sb])
+print(coef_df[coef_df['sub_basin']==sb])
 
-# # save coef table as csv
-# coef_df[coef_df['sub_basin']==sb].to_csv(f"datasets/data_viz/MLR/TC+TD/v3_runs/b_runs/MLR_origins_vs_sstMean+shear+gpi+rh600+uwindRaw_coef_table_{sb}.csv")
+# save coef table as csv
+# coef_df[coef_df['sub_basin']==sb].to_csv(f"datasets/data_viz/MLR/TC+TD/v4_runs/MLR_origins_vs_shear+mslpMean+gpi+rh600_coef_table_{sb}.csv")
 
-# ######################################################################################################
+######################################################################################################
 
-# # # # actual v predicted for TWO variables
-# model = results[sb]
+# # # actual v predicted for TWO variables
+model = results[sb]
 
-# # get data for this basin
-# group = merged[merged["sub_basin_name"] == sb].dropna(
-#     subset=["origin_node_count"] + predictors
-# ).copy()
+# get data for this basin
+group = merged[merged["sub_basin_name"] == sb].dropna(
+    subset=["origin_node_count"] + predictors
+).copy()
 
-# # standardize predictors exactly as during model fitting
-# scaler = StandardScaler()
-# group[predictors] = scaler.fit_transform(group[predictors])
+# standardize predictors exactly as during model fitting
+scaler = StandardScaler()
+group[predictors] = scaler.fit_transform(group[predictors])
 
-# # predict origin node counts using BOTH predictors
-# group["Predicted"] = model.predict(group)
+# predict origin node counts using BOTH predictors
+group["Predicted"] = model.predict(group)
 
-# # put back in chronological order
-# group = group.sort_values("year")
+# put back in chronological order
+group = group.sort_values("year")
 
-# # plot
-# fig, ax = plt.subplots(figsize=(14,6))
+# plot
+fig, ax = plt.subplots(figsize=(14,6))
 
-# # observed counts
-# ax.plot(
-#     group["year"],
-#     group["origin_node_count"],
-#     color="black",
-#     linewidth=2,
-#     marker="o",
-#     label="Observed TC+TD Origin Nodes"
-# )
+# observed counts
+ax.plot(
+    group["year"],
+    group["origin_node_count"],
+    color="black",
+    linewidth=2,
+    marker="o",
+    label="Observed TC+TD Origin Nodes"
+)
 
-# # predicted counts
-# ax.plot(
-#     group["year"],
-#     group["Predicted"],
-#     color="tab:blue",
-#     linewidth=2,
-#     linestyle="--",
-#     marker="s",
-#     label="Predicted TC+TD Origin Nodes"
-# )
+# predicted counts
+ax.plot(
+    group["year"],
+    group["Predicted"],
+    color="tab:blue",
+    linewidth=2,
+    linestyle="--",
+    marker="s",
+    label="Predicted TC+TD Origin Nodes"
+)
 
-# ax.set_xlabel("Year")
-# ax.set_ylabel("Origin Nodes (count)")
+ax.set_xlabel("Year")
+ax.set_ylabel("Origin Nodes (count)")
 
-# ax.set_title(
-#     f"{sb}\nObserved vs. Predicted TC+TD Origin Locations\n"
-#     f"Multiple Linear Regression ($R^2$ = {model.rsquared:.2f})"
-# )
+ax.set_title(
+    f"{sb}\nObserved vs. Predicted TC+TD Origin Locations\n"
+    f"Multiple Linear Regression ($R^2$ = {model.rsquared:.2f})"
+)
 
-# ax.legend()
+ax.legend()
 
-# plt.tight_layout()
-# plt.savefig(f"images/data_viz/MLR/TC+TD/v3_runs/b_runs/actual_v_predicted_origins_sstMean+shear+gpi+rh600+uwindRaw_{sb}.png")
-# plt.show()
+plt.tight_layout()
+# plt.savefig(f"images/data_viz/MLR/TC+TD/v4_runs/actual_v_predicted_origins_shear+mslpMean+gpi+rh600_{sb}.png")
+plt.show()
 
 # ######################################################################################################
 

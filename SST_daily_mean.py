@@ -127,28 +127,28 @@ sub_basins["geometry"] = sub_basins["geometry"].apply(shift_lon)
 ##########################################################################################################
 
 # open daily mean files
-ds = xr.open_mfdataset("datasets/COBE2 SST/daily/*.nc")
+ds = xr.open_mfdataset("datasets/GPI/GPI_EN_calc/GPI_EN_output.nc")
 
 # print(ds)
 
 # filter to only SST variable
-sst = ds["sst"]
+gpi = ds["gpi"]
 
 # convert lon to -180-180
-sst = sst.assign_coords(
-    lon=(((sst.lon + 180) % 360) - 180)
+gpi = gpi.assign_coords(
+    lon=(((gpi.lon + 180) % 360) - 180)
 ).sortby("lon")
 
 # add CRS and spatial dims
-sst = sst.rio.write_crs("EPSG:4326")
-sst = sst.rio.set_spatial_dims(x_dim="lon", y_dim="lat")
+gpi = gpi.rio.write_crs("EPSG:4326")
+gpi = gpi.rio.set_spatial_dims(x_dim="lon", y_dim="lat")
 
 # filter to N Atlantic basin
 region = basins[basins["basin name"] == "N Atlantic"]
 
 # filter to hurricane season (and filter date range to match SyCLoPS)
-sst_filt = (
-    sst
+gpi_filt = (
+    gpi
     .sel(time=slice("1940-01-01", "2025-12-31"))
     .where(lambda x: x.time.dt.month.isin([6, 7, 8, 9, 10]), drop=True)
     .rio.clip(region.geometry, region.crs, drop=True)
@@ -167,8 +167,8 @@ for i, subbasin in enumerate(sub_basins["sub_basin_name"]):
     print(f"Processing {subbasin}...")
 
     # Keep only SST pixels inside this sub-basin
-    sb_sst = sst_filt.where(
-        mask.mask(sst_filt) == i
+    sb_sst = gpi_filt.where(
+        mask.mask(gpi_filt) == i
     )
 
     # Calculate daily spatial mean
@@ -195,4 +195,4 @@ print(daily_table.head())
 print(daily_table.shape)
 
 # save to csv
-# daily_table.to_csv("datasets/COBE2 SST/post-processing/sst_daily_mean_bySubbasin_table_v2.csv", index=False)
+daily_table.to_csv("datasets/GPI/GPI_EN_calc/gpi_monthly_mean_bySubbasin_table.csv", index=False)
