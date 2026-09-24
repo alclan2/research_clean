@@ -68,4 +68,4 @@ sstg_wide = sstg.pivot(
 # calculate correlation
 correlation_matrix = sstg_wide[["Gulf (A)", "Gulf (B)"]].corr()
 
-print(correlation_matrix)
+# print(correlation_matrix)

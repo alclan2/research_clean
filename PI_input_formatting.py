@@ -125,85 +125,95 @@ sub_basins["geometry"] = sub_basins["geometry"].apply(shift_lon)
 
 #######################################################################################
 
-# # combine files (from NOAA https://downloads.psl.noaa.gov/Datasets/ncep.reanalysis2/Dailies/surface/)
-# ds = xr.open_mfdataset(
-#     "datasets/RHUM/*.nc",
-#     combine = "by_coords",
-#     preprocess=lambda ds: ds.drop_vars("time_bnds", errors="ignore"),
-# )
+# combine files (from NOAA https://downloads.psl.noaa.gov/Datasets/ncep.reanalysis2/Dailies/surface/)
+ds = xr.open_mfdataset(
+    "datasets/COBE2 SST/daily/*.nc",
+    combine = "by_coords",
+    preprocess=lambda ds: ds.drop_vars("time_bnds", errors="ignore"),
+)
 
-# # select the variable
-# ds2 = ds["rhum"]
+# select the variable
+ds2 = ds["sst"]
 
-# # convert lon to -180-180
-# ds2 = ds2.assign_coords(
-#     lon=(((ds2.lon + 180) % 360) - 180)
-# ).sortby("lon")
+# convert lon to -180-180
+ds2 = ds2.assign_coords(
+    lon=(((ds2.lon + 180) % 360) - 180)
+).sortby("lon")
 
-# # add CRS and spatial dims
-# ds2 = ds2.rio.write_crs("EPSG:4326")
-# ds2 = ds2.rio.set_spatial_dims(x_dim="lon", y_dim="lat")
+# add CRS and spatial dims
+ds2 = ds2.rio.write_crs("EPSG:4326")
+ds2 = ds2.rio.set_spatial_dims(x_dim="lon", y_dim="lat")
 
-# # filter to N Atlantic basin
-# region = basins[basins["basin name"] == "N Atlantic"]
+# filter to N Atlantic basin
+region = basins[basins["basin name"] == "N Atlantic"]
 
-# # filter to hurricane season
-# ds2_filt = ds2.where(
-#     ds2.time.dt.month.isin([6, 7, 8, 9, 10]),
-#     drop=True
-# )
+# filter to hurricane season
+ds2_filt = ds2.where(
+    ds2.time.dt.month.isin([6, 7, 8, 9, 10]),
+    drop=True
+)
 
-# # print("AFTER MONTH FILTER")
-# # print(ds2_filt.time.dt.month.values[:30])
-# # print(ds2_filt.time.size)
+# print("AFTER MONTH FILTER")
+# print(ds2_filt.time.dt.month.values[:30])
+# print(ds2_filt.time.size)
 
-# # filter basin
-# ds2_filt = ds2_filt.rio.clip(
-#     region.geometry,
-#     region.crs,
-#     drop=True
-# )
+# filter basin
+ds2_filt = ds2_filt.rio.clip(
+    region.geometry,
+    region.crs,
+    drop=True
+)
 
-# # clip time period
-# ds2_filt = ds2_filt.sel(time=slice("1979-06-01", "2025-10-01"))
+# clip time period
+ds2_filt = ds2_filt.sel(time=slice("1979-06-01", "2025-10-01"))
 
-# # aggregate daily means to monthly means
-# ds2_monthly = ds2_filt.resample(time="MS").mean("time")
+# # print(ds2_filt)
 
-# ds2_monthly = (
-#     ds2_filt
-#     .resample(time="MS")
-#     .mean("time")
-#     .where(
-#         lambda x: x.time.dt.month.isin([6,7,8,9,10]),
-#         drop=True
-#     )
-# )
+# # # aggregate daily means to monthly means
+# # ds2_monthly = ds2_filt.resample(time="MS").mean("time")
+
+# # ds2_monthly = (
+# #     ds2_filt
+# #     .resample(time="MS")
+# #     .mean("time")
+# #     .where(
+# #         lambda x: x.time.dt.month.isin([6,7,8,9,10]),
+# #         drop=True
+# #     )
+# # )
 
 # # rename level to p
-# ds2_monthly = ds2_monthly.rename({"level": "p"})
+# ds2_filt = ds2_filt.rename({"level": "p"})
 
-# # # convert from kelvin to C
-# # ds2_monthly = ds2_monthly - 273.15
+# print(ds2_filt)
 
-# print(ds2_monthly.time.dt.month.values[:20])
-# print(ds2_monthly.sizes)
+# # convert from kelvin to C
+# ds2_filt = ds2_filt - 273.15
+
+print(ds2_filt.min())
+print(ds2_filt.max())
+
+# print(ds2_filt.time.dt.month.values[:20])
+# print(ds2_filt.sizes)
 
 # # save filtered datasets
-# ds2_monthly.to_netcdf("datasets/potential_intensity/input/rhum_mean_1979-2025.nc")
+# ds2_filt.to_netcdf("datasets/potential_intensity/input/sst_mean_1979-2025_daily.nc")
 
 #######################################################################################
 
 # now calc specific humidity
 
 # load air temp dataset
-air = xr.open_mfdataset("datasets/potential_intensity/input/air_temp_mean_1979-2025.nc")
+air = xr.open_mfdataset("datasets/potential_intensity/input/air_temp_mean_1979-2025_daily.nc")
 
 # load rhum dataset
-rhum = xr.open_dataset("datasets/potential_intensity/input/rhum_mean_1979-2025.nc")
+rhum = xr.open_dataset("datasets/potential_intensity/input/rhum_mean_1979-2025_daily.nc")
 
-# temperature in Celsius
+# temperature in Kelvin
 T = air["air"]
+
+# convert Kelvin to Celsius
+T = T - 273.15
 
 # relative humidity as fraction (0-1)
 RH = rhum["rhum"] / 100
@@ -225,8 +235,14 @@ r = 0.622 * e / (p - e)
 # convert to g/kg for tcpyPI
 R = r * 1000
 
-# save to dataset
-R.to_netcdf("datasets/potential_intensity/input/mixing_ration_mean_1979-2025.nc")
+print("\nMixing ratio:")
+print("min:", R.min(skipna=True).values)
+print("max:", R.max(skipna=True).values)
+print("mean:", R.mean(skipna=True).values)
+print("NaNs:", R.isnull().sum().values)
 
-print(R.min().values)
-print(R.max().values)
+# save to dataset
+R.to_netcdf("datasets/potential_intensity/input/mixing_ration_mean_1979-2025_daily.nc")
+
+# print(R.min().values)
+# print(R.max().values)

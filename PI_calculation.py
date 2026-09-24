@@ -72,144 +72,202 @@ sub_basins["geometry"] = sub_basins["geometry"].apply(shift_lon)
 
 #######################################################################################
 
-# # load input variables
-# sst_ds = xr.open_dataset("datasets/potential_intensity/input/sst_mean_1979-2025.nc")
-# msl_ds = xr.open_dataset("datasets/potential_intensity/input/mslp_mean_1979-2025.nc")
-# t_ds = xr.open_dataset("datasets/potential_intensity/input/air_temp_mean_1979-2025.nc")
-# r_ds = xr.open_dataset("datasets/potential_intensity/input/mixing_ratio_mean_1979-2025.nc")
+# load input variables
+sst_ds = xr.open_dataset("datasets/potential_intensity/input/sst_mean_1979-2025_daily.nc")
+msl_ds = xr.open_dataset("datasets/potential_intensity/input/mslp_mean_1979-2025_daily.nc")
+t_ds = xr.open_dataset("datasets/potential_intensity/input/air_temp_mean_1979-2025_daily.nc")
+r_ds = xr.open_dataset("datasets/potential_intensity/input/mixing_ration_mean_1979-2025_daily.nc")
 
-# # DataArrays
-# sst = sst_ds["sst"]
-# msl = msl_ds["mslp"]
-# t   = t_ds["air"]
-# r   = r_ds["__xarray_dataarray_variable__"]
+# DataArrays
+sst = sst_ds["sst"]
+msl = msl_ds["mslp"]
+t   = t_ds["air"]
+r   = r_ds["__xarray_dataarray_variable__"]
 
-# # pressure coordinate
-# p = t["p"]
+# pressure coordinate
+p = t["p"]
 
-# # update units
-# t.attrs["units"] = "degC"
+# convert temperature from Kelvin to Celsius
+t = t - 273.15
+t.attrs["units"] = "degC"
 
-# # convert mslp from Pa to hPa
-# msl = msl / 100
-# msl.attrs["units"] = "hPa"
+# convert mslp from Pa to hPa
+msl = msl / 100
+msl.attrs["units"] = "hPa"
 
-# # interpolate sst grid to match other variable grids (1deg to 2.5deg)
-# sst = sst.interp(
-#     lat=t.lat,
-#     lon=t.lon,
-#     method="linear"
+# interpolate sst grid to match other variable grids (1deg to 2.5deg)
+sst = sst.interp(
+    lat=t.lat,
+    lon=t.lon,
+    method="linear"
+)
+
+# align datasets
+sst, msl, t, r = xr.align(
+    sst,
+    msl,
+    t,
+    r,
+    join="inner"
+)
+
+# filter to only points over the ocean
+# valid = (
+#     (sst > 26) &
+#     np.isfinite(sst) &
+#     np.isfinite(msl)
+# )
+valid = (
+    np.isfinite(sst) &
+    np.isfinite(msl)
+)
+
+sst = sst.where(valid)
+msl = msl.where(valid)
+t = t.where(valid)
+r = r.where(valid)
+
+# run pi.py
+result = xr.apply_ufunc(
+    pi,
+    sst,
+    msl,
+    p,
+    t,
+    r,
+    kwargs=dict(
+        CKCD=0.9,
+        ascent_flag=0,
+        diss_flag=1,
+        ptop=50,
+        miss_handle=1,
+    ),
+    input_core_dims=[
+        [],
+        [],
+        ["p"],
+        ["p"],
+        ["p"],
+    ],
+    output_core_dims=[
+        [], [], [], [], []
+    ],
+    output_dtypes=[
+        float, float, int, float, float
+    ],
+    vectorize=True,
+    dask="parallelized",
+)
+
+vmax, pmin, ifl, t0, otl = result
+
+pi_ds = xr.Dataset(
+    {
+        "vmax": vmax,
+        "pmin": pmin,
+        "ifl": ifl,
+        "t0": t0,
+        "otl": otl,
+    }
+)
+
+# # check
+# # Find valid SST points in the tropical Northern Hemisphere
+# tropical_valid = (
+#     np.isfinite(sst.values) &
+#     (sst.lat.values[np.newaxis, :, np.newaxis] >= 5) &
+#     (sst.lat.values[np.newaxis, :, np.newaxis] <= 25)
 # )
 
-# # align datasets
-# sst, msl, t, r = xr.align(
-#     sst,
-#     msl,
-#     t,
-#     r,
-#     join="inner"
+# indices = np.argwhere(tropical_valid)
+# ti, yi, xi = indices[0]
+# sst_test = sst.isel(time=ti, lat=yi, lon=xi).item()
+# msl_test = msl.isel(time=ti, lat=yi, lon=xi).item()
+# t_test = t.isel(time=ti, lat=yi, lon=xi).values
+# r_test = r.isel(time=ti, lat=yi, lon=xi).values
+
+# print("SST:", sst_test)
+# print("MSL:", msl_test)
+# print("T:", t_test)
+# print("R:", r_test)
+# test_result = pi(
+#     sst_test,
+#     msl_test,
+#     p.values,
+#     t_test,
+#     r_test,
+#     CKCD=0.9,
+#     ascent_flag=0,
+#     diss_flag=1,
+#     ptop=50,
+#     miss_handle=1,
 # )
+# print("PI RESULT:", test_result)
 
-# # # filter to only points over the ocean
-# # valid = (
-# #     (sst > 26) &
-# #     np.isfinite(sst) &
-# #     np.isfinite(msl)
-# # )
+print("===== VMAX =====")
+print("NaNs:", vmax.isnull().sum().item(), "/", vmax.size)
+print("Min:", vmax.min(skipna=True).item())
+print("Max:", vmax.max(skipna=True).item())
+print("Mean:", vmax.mean(skipna=True).item())
 
-# # sst = sst.where(valid)
-# # msl = msl.where(valid)
-# # t = t.where(valid)
-# # r = r.where(valid)
-
-# # run pi.py
-# result = xr.apply_ufunc(
-#     pi,
-#     sst,
-#     msl,
-#     p,
-#     t,
-#     r,
-#     kwargs=dict(
-#         CKCD=0.9,
-#         ascent_flag=0,
-#         diss_flag=1,
-#         ptop=50,
-#         miss_handle=1,
-#     ),
-#     input_core_dims=[
-#         [],
-#         [],
-#         ["p"],
-#         ["p"],
-#         ["p"],
-#     ],
-#     output_core_dims=[
-#         [], [], [], [], []
-#     ],
-#     output_dtypes=[
-#         float, float, int, float, float
-#     ],
-#     vectorize=True,
-#     dask="parallelized",
-# )
-
-# vmax, pmin, ifl, t0, otl = result
-
-# pi_ds = xr.Dataset(
-#     {
-#         "vmax": vmax,
-#         "pmin": pmin,
-#         "ifl": ifl,
-#         "t0": t0,
-#         "otl": otl,
-#     }
-# )
 
 # print(pi_ds)
 
-# save to csv
-# pi_ds.to_netcdf("datasets/potential_intensity/pi_output.nc")
+# # save to csv
+# pi_ds.to_netcdf("datasets/potential_intensity/pi_output_daily.nc")
+
+# check plot
+vmax_mean = vmax.mean(dim="time", skipna=True)
+vmax_mean.plot(
+    figsize=(12, 5),
+    cmap="viridis",
+    vmin=0,
+    vmax=80
+)
+
+
+plt.title("Maximum Potential Intensity — 1981-09-01")
+plt.show()
 
 #######################################################################################
 
-# load PI dataset
-ds = xr.open_dataset("datasets/potential_intensity/pi_output.nc")
+# # load PI dataset
+# ds = xr.open_dataset("datasets/potential_intensity/pi_output.nc")
 
-# print(ds)
+# # print(ds)
 
-# convert to data frame
-df = ds["vmax"].to_dataframe(name="vmax").reset_index()
+# # convert to data frame
+# df = ds["vmax"].to_dataframe(name="vmax").reset_index()
 
-# remove missing PI values (over land)
-df = df.dropna(subset=["vmax"])
+# # remove missing PI values (over land)
+# df = df.dropna(subset=["vmax"])
 
-# convert grid cells to points
-gdf = gpd.GeoDataFrame(
-    df,
-    geometry=gpd.points_from_xy(df.lon, df.lat),
-    crs="EPSG:4326",
-)
+# # convert grid cells to points
+# gdf = gpd.GeoDataFrame(
+#     df,
+#     geometry=gpd.points_from_xy(df.lon, df.lat),
+#     crs="EPSG:4326",
+# )
 
-# join sub basins
-gdf = gpd.sjoin(
-    gdf,
-    sub_basins[["sub_basin_name", "geometry"]],
-    how="inner",
-    predicate="within",   # or "intersects"
-)
+# # join sub basins
+# gdf = gpd.sjoin(
+#     gdf,
+#     sub_basins[["sub_basin_name", "geometry"]],
+#     how="inner",
+#     predicate="within",   # or "intersects"
+# )
 
-print(gdf)
+# print(gdf)
 
-# add year column
-gdf['year'] = gdf['time'].dt.year
+# # add year column
+# gdf['year'] = gdf['time'].dt.year
 
-# pivot to time series
-ts = (
-    gdf.groupby(["year", "sub_basin_name"])["vmax"]
-       .mean()
-       .reset_index()
-)
+# # pivot to time series
+# ts = (
+#     gdf.groupby(["year", "sub_basin_name"])["vmax"]
+#        .mean()
+#        .reset_index()
+# )
 
 # print(ts)
 

@@ -167,12 +167,12 @@ for i, subbasin in enumerate(sub_basins["sub_basin_name"]):
     print(f"Processing {subbasin}...")
 
     # Keep only SST pixels inside this sub-basin
-    sb_sst = gpi_filt.where(
+    sb_gpi = gpi_filt.where(
         mask.mask(gpi_filt) == i
     )
 
     # Calculate daily spatial mean
-    daily_mean = sb_sst.mean(
+    daily_mean = sb_gpi.mean(
         dim=["lat", "lon"],
         skipna=True
     )
@@ -195,4 +195,4 @@ print(daily_table.head())
 print(daily_table.shape)
 
 # save to csv
-daily_table.to_csv("datasets/GPI/GPI_EN_calc/gpi_monthly_mean_bySubbasin_table.csv", index=False)
+# daily_table.to_csv("datasets/GPI/GPI_EN_calc/gpi_monthly_mean_bySubbasin_table.csv", index=False)

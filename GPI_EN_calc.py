@@ -10,18 +10,15 @@ import xarray as xr
 import matplotlib.ticker as mtick
 
 # load variable datasets
-vort = xr.open_dataset("datasets/GPI/GPI_EN_calc/abs_vort_850_monthly.nc")
-vmax = xr.open_dataset("datasets/potential_intensity/pi_output.nc")
-rhum = xr.open_dataset("datasets/GPI/GPI_EN_calc/rhum_600_monthly.nc")
-shear = xr.open_dataset("datasets/GPI/GPI_EN_calc/shear_850_200_monthly_v2.nc")
+vort = xr.open_dataset("datasets/GPI/GPI_EN_calc/abs_vort_850_daily.nc")
+vmax = xr.open_dataset("datasets/potential_intensity/pi_output_daily.nc")
+rhum = xr.open_dataset("datasets/GPI/GPI_EN_calc/rhum_600_daily.nc")
+shear = xr.open_dataset("datasets/GPI/GPI_EN_calc/shear_850_200_daily_v2.nc")
 
 vort = vort["__xarray_dataarray_variable__"]
 vmax = vmax["vmax"]
 rhum = rhum["rhum"]
 shear = shear["__xarray_dataarray_variable__"]
-
-# print(rhum.min().values)
-# print(rhum.max().values)
 
 # filter date ranges so they all match
 vort, vmax, rhum, shear = xr.align(
@@ -31,6 +28,42 @@ vort, vmax, rhum, shear = xr.align(
     shear,
     join="inner"
 )
+
+# # check
+# print("vort:")
+# print(vort)
+# print("NaNs:", vort.isnull().sum().item(), "/", vort.size)
+
+print("\nvmax:")
+print(vmax)
+print("NaNs:", vmax.isnull().sum().item(), "/", vmax.size)
+
+# print("\nrhum:")
+# print(rhum)
+# print("NaNs:", rhum.isnull().sum().item(), "/", rhum.size)
+
+# print("\nshear:")
+# print(shear)
+# print("NaNs:", shear.isnull().sum().item(), "/", shear.size)
+
+# for name, var in [
+#     ("vort", vort),
+#     ("vmax", vmax),
+#     ("rhum", rhum),
+#     ("shear", shear),
+# ]:
+#     print(
+#         name,
+#         "min =", var.min(skipna=True).item(),
+#         "max =", var.max(skipna=True).item(),
+#         "mean =", var.mean(skipna=True).item(),
+#         "NaNs =", var.isnull().sum().item(),
+#         "/", var.size
+#     )
+
+
+
+
 
 # calc GPI using Emanual and Nolan model
 # first term
@@ -72,23 +105,23 @@ for attr in [
 ]:
     gpi.attrs.pop(attr, None)
 
-# # print(gpi)
+print(gpi)
 
-# # # save to net cdf
-# # gpi.to_netcdf("datasets/GPI/GPI_EN_calc/GPI_EN_output.nc")
+# save to net cdf
+gpi.to_netcdf("datasets/GPI/GPI_EN_calc/GPI_EN_output_daily.nc")
 
 ######################################################################################################
 
-# plot spatial map
-gpi_clim = gpi.mean("time")
+# # plot spatial map
+# gpi_clim = gpi.mean("time")
 
-gpi_clim.plot(
-    cmap="viridis",
-    robust=True,
-    figsize=(10,5)
-)
+# gpi_clim.plot(
+#     cmap="viridis",
+#     robust=True,
+#     figsize=(10,5)
+# )
 
-plt.show()
+# plt.show()
 
 ######################################################################################################
 

@@ -123,65 +123,82 @@ sub_basins["geometry"] = sub_basins["geometry"].apply(shift_lon)
 
 #################################################################################################################
 
-# # load in u and v wind data to calculate 850hPa vorticity
-# ds1 = xr.open_mfdataset(
-#     "datasets/u-wind/*.nc", 
-#     combine = "by_coords", 
-#     preprocess=lambda ds: ds.drop_vars("time_bnds", errors="ignore")
-# )
-# ds2 = xr.open_mfdataset(
-#     "datasets/v-wind/*.nc", 
-#     combine = "by_coords", 
-#     preprocess=lambda ds: ds.drop_vars("time_bnds", errors="ignore")
-# )
+# load in u and v wind data to calculate 850hPa vorticity
+ds1 = xr.open_mfdataset(
+    "datasets/u-wind/*.nc", 
+    combine = "by_coords", 
+    preprocess=lambda ds: ds.drop_vars("time_bnds", errors="ignore")
+)
+ds2 = xr.open_mfdataset(
+    "datasets/v-wind/*.nc", 
+    combine = "by_coords", 
+    preprocess=lambda ds: ds.drop_vars("time_bnds", errors="ignore")
+)
 
-# # select the variables
-# uwnd = ds1["uwnd"]
-# vwnd = ds2["vwnd"]
+# # print(ds1)
+# # print(ds2)
 
-# # convert lon to -180-180
-# uwnd = uwnd.assign_coords(
-#     lon=(((uwnd.lon + 180) % 360) - 180)
-# ).sortby("lon")
-# vwnd = vwnd.assign_coords(
-#     lon=(((vwnd.lon + 180) % 360) - 180)
-# ).sortby("lon")
+# select the variables
+uwnd = ds1["uwnd"]
+vwnd = ds2["vwnd"]
 
-# # filter to relative humidity to a specific pressure level only
-# uwnd850 = uwnd.sel(level=850)
-# vwnd850 = vwnd.sel(level=850)
+# convert lon to -180-180
+uwnd = uwnd.assign_coords(
+    lon=(((uwnd.lon + 180) % 360) - 180)
+).sortby("lon")
+vwnd = vwnd.assign_coords(
+    lon=(((vwnd.lon + 180) % 360) - 180)
+).sortby("lon")
 
-# # filter to hurricane season
-# uwnd850_szn = (
-#     uwnd850
-#     .where(uwnd850.time.dt.month.isin([6, 7, 8, 9, 10]), drop=True)
-# )
-# vwnd850_szn = (
-#     vwnd850
-#     .where(vwnd850.time.dt.month.isin([6, 7, 8, 9, 10]), drop=True)
-# )
+# filter to relative humidity to a specific pressure level only
+uwnd850 = uwnd.sel(level=850)
+vwnd850 = vwnd.sel(level=850)
 
-# # compute daily relative vorticity
-# w = VectorWind(uwnd850_szn, vwnd850_szn)
-# vort850 = w.vorticity()
+# filter to hurricane season
+uwnd850_szn = (
+    uwnd850
+    .where(uwnd850.time.dt.month.isin([6, 7, 8, 9, 10]), drop=True)
+)
+vwnd850_szn = (
+    vwnd850
+    .where(vwnd850.time.dt.month.isin([6, 7, 8, 9, 10]), drop=True)
+)
 
-# # compute planetary vorticity and add to relative (to calc absolute vort)
-# omega = 7.2921e-5
-# f = 2 * omega * np.sin(np.deg2rad(vort850.lat))
-# abs_vort = vort850 + f
+# compute daily relative vorticity
+w = VectorWind(uwnd850_szn, vwnd850_szn)
+vort850 = w.vorticity()
 
-# # filter to N Atlantic basin
-# abs_vort = abs_vort.rio.write_crs("EPSG:4326")
-# region = basins[basins["basin name"] == "N Atlantic"]
-# abs_vort = abs_vort.rio.clip(region.geometry, region.crs, drop=True)
+# compute planetary vorticity and add to relative (to calc absolute vort)
+omega = 7.2921e-5
+f = 2 * omega * np.sin(np.deg2rad(vort850.lat))
+abs_vort = vort850 + f
 
-# # average to monthly
-# abs_vort_monthly = abs_vort.resample(time="1MS").mean()
+# filter to N Atlantic basin
+abs_vort = abs_vort.rio.write_crs("EPSG:4326")
+region = basins[basins["basin name"] == "N Atlantic"]
+abs_vort = abs_vort.rio.clip(region.geometry, region.crs, drop=True)
 
-# print(abs_vort_monthly)
 
-# # save dataset
-# abs_vort_monthly.to_netcdf("datasets/GPI/GPI_EN_calc/abs_vort_850_monthly.nc")
+
+a_abs = np.abs(1e5 * abs_vort) ** 1.5
+a_clip = np.maximum(1e5 * abs_vort, 0) ** 1.5
+print("max difference:",
+      (a_abs - a_clip).max(skipna=True).item())
+
+print("mean difference:",
+      (a_abs - a_clip).mean(skipna=True).item())
+
+
+
+
+
+# # # average to monthly
+# # abs_vort_monthly = abs_vort.resample(time="1MS").mean()
+
+print(abs_vort)
+
+# # # save dataset
+# abs_vort.to_netcdf("datasets/GPI/GPI_EN_calc/abs_vort_850_daily.nc")
 
 #################################################################################################################
 
@@ -206,39 +223,39 @@ sub_basins["geometry"] = sub_basins["geometry"].apply(shift_lon)
 # # filter to relative humidity to a specific pressure level only
 # rhum600 = rhum.sel(level=600)
 
-# # roll up to monthly means
-# rhum600_monthly = rhum600.resample(time="MS").mean()
+# # # roll up to monthly means
+# # rhum600_monthly = rhum600.resample(time="MS").mean()
 
 # # add CRS and spatial dims
-# rhum600_monthly = rhum600_monthly.rio.write_crs("EPSG:4326")
-# rhum600_monthly = rhum600_monthly.rio.set_spatial_dims(x_dim="lon", y_dim="lat")
+# rhum600 = rhum600.rio.write_crs("EPSG:4326")
+# rhum600 = rhum600.rio.set_spatial_dims(x_dim="lon", y_dim="lat")
 
 # # filter to N Atlantic basin
 # region = basins[basins["basin name"] == "N Atlantic"]
 
 # # filter to hurricane season
 # rhum600_full = (
-#     rhum600_monthly
-#     .where(rhum600_monthly.time.dt.month.isin([6, 7, 8, 9, 10]), drop=True)
+#     rhum600
+#     .where(rhum600.time.dt.month.isin([6, 7, 8, 9, 10]), drop=True)
 #     .rio.clip(region.geometry, region.crs, drop=True)
 # )
 
-# print(rhum600_full.head())
+# print(rhum600_full)
 
 # # save dataset
-# rhum600_full.to_netcdf("datasets/GPI/GPI_EN_calc/rhum_600_monthly.nc")
+# rhum600_full.to_netcdf("datasets/GPI/GPI_EN_calc/rhum_600_daily.nc")
 
 #################################################################################################################
 
-# potential intensity data
-ds = xr.open_dataset("datasets/potential_intensity/pi_output.nc")
+# # potential intensity data
+# ds = xr.open_dataset("datasets/potential_intensity/pi_output.nc")
 
-print(ds)
+# print(ds)
 
-# select variable
-vmax = ds['vmax']
+# # select variable
+# vmax = ds['vmax']
 
-print(vmax)
+# print(vmax)
 
 # # save dataset
 # vmax.to_netcdf("datasets/GPI/GPI_EN_calc/potential_intensity_monthly.nc")
@@ -288,10 +305,10 @@ print(vmax)
 # # calculate vertical shear
 # shear = uwind.sel(level=200) - uwind.sel(level=850)
 
-# # roll up to monthly means
-# shear_monthly = shear.resample(time="MS").mean()
+# # # roll up to monthly means
+# # shear_monthly = shear.resample(time="MS").mean()
 
-# print(shear_monthly)
+# print(shear)
 
 # # save dataset
-# shear_monthly.to_netcdf("datasets/GPI/GPI_EN_calc/shear_850_200_monthly.nc")
+# shear.to_netcdf("datasets/GPI/GPI_EN_calc/shear_850_200_daily.nc")
