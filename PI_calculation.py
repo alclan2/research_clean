@@ -216,18 +216,18 @@ print("Mean:", vmax.mean(skipna=True).item())
 # # save to csv
 # pi_ds.to_netcdf("datasets/potential_intensity/pi_output_daily.nc")
 
-# check plot
-vmax_mean = vmax.mean(dim="time", skipna=True)
-vmax_mean.plot(
-    figsize=(12, 5),
-    cmap="viridis",
-    vmin=0,
-    vmax=80
-)
+# # check plot
+# vmax_mean = vmax.mean(dim="time", skipna=True)
+# vmax_mean.plot(
+#     figsize=(12, 5),
+#     cmap="viridis",
+#     vmin=0,
+#     vmax=80
+# )
 
 
-plt.title("Maximum Potential Intensity — 1981-09-01")
-plt.show()
+# plt.title("Maximum Potential Intensity — 1981-09-01")
+# plt.show()
 
 #######################################################################################
 
