@@ -136,33 +136,19 @@ def clean(ds):
     
     return ds
 
-ds1 = xr.open_mfdataset(
-    "datasets/u-wind/*.nc",
-    combine="by_coords",
-    preprocess=clean,
-    chunks={"time": 365}
-)
+ds1 = xr.open_mfdataset("datasets/u-wind/post_processing/post_landmask/uwnd_1979-2025_landmasked.nc")
 
-ds2 = xr.open_mfdataset(
-    "datasets/v-wind/*.nc",
-    combine="by_coords",
-    preprocess=clean,
-    chunks={"time": 365}
-)
+ds2 = xr.open_mfdataset("datasets/v-wind/post_processing/post_landmask/vwnd_1979-2025_landmasked.nc")
 
 uwnd = ds1["uwnd"].sel(level=[850, 200])
 vwnd = ds2["vwnd"].sel(level=[850, 200])
 
-# print(uwnd)
-# print(vwnd)
+print(uwnd)
+print(vwnd)
 
 # convert lon to -180-180
-uwnd = uwnd.assign_coords(
-    lon=(((uwnd.lon + 180) % 360) - 180)
-).sortby("lon")
-vwnd = vwnd.assign_coords(
-    lon=(((vwnd.lon + 180) % 360) - 180)
-).sortby("lon")
+uwnd = uwnd.assign_coords(lon=(((uwnd.lon + 180) % 360) - 180)).sortby("lon")
+vwnd = vwnd.assign_coords(lon=(((vwnd.lon + 180) % 360) - 180)).sortby("lon")
 
 # add CRS and spatial dims
 uwnd = uwnd.rio.write_crs("EPSG:4326")
@@ -202,9 +188,9 @@ shear = np.sqrt(
     (v850 - v200)**2
 )
 
-# shear_monthly = shear.resample(time="1MS").mean()
+# # shear_monthly = shear.resample(time="1MS").mean()
 
-print(shear)
+# print(shear)
 
-# save 
-shear.to_netcdf("datasets/GPI/GPI_EN_calc/shear_850_200_daily_v2.nc")
+# # save 
+# shear.to_netcdf("datasets/GPI/GPI_EN_calc/shear_850_200_daily_v2_landmasked.nc")

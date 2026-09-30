@@ -123,70 +123,70 @@ sub_basins["geometry"] = sub_basins["geometry"].apply(shift_lon)
 
 #################################################################################################################
 
-# load in u and v wind data to calculate 850hPa vorticity
-ds1 = xr.open_mfdataset(
-    "datasets/u-wind/*.nc", 
-    combine = "by_coords", 
-    preprocess=lambda ds: ds.drop_vars("time_bnds", errors="ignore")
-)
-ds2 = xr.open_mfdataset(
-    "datasets/v-wind/*.nc", 
-    combine = "by_coords", 
-    preprocess=lambda ds: ds.drop_vars("time_bnds", errors="ignore")
-)
+# # load in u and v wind data to calculate 850hPa vorticity
+# ds1 = xr.open_mfdataset(
+#     "datasets/u-wind/*.nc", 
+#     combine = "by_coords", 
+#     preprocess=lambda ds: ds.drop_vars("time_bnds", errors="ignore")
+# )
+# ds2 = xr.open_mfdataset(
+#     "datasets/v-wind/*.nc", 
+#     combine = "by_coords", 
+#     preprocess=lambda ds: ds.drop_vars("time_bnds", errors="ignore")
+# )
 
-# # print(ds1)
-# # print(ds2)
+# # # print(ds1)
+# # # print(ds2)
 
-# select the variables
-uwnd = ds1["uwnd"]
-vwnd = ds2["vwnd"]
+# # select the variables
+# uwnd = ds1["uwnd"]
+# vwnd = ds2["vwnd"]
 
-# convert lon to -180-180
-uwnd = uwnd.assign_coords(
-    lon=(((uwnd.lon + 180) % 360) - 180)
-).sortby("lon")
-vwnd = vwnd.assign_coords(
-    lon=(((vwnd.lon + 180) % 360) - 180)
-).sortby("lon")
+# # convert lon to -180-180
+# uwnd = uwnd.assign_coords(
+#     lon=(((uwnd.lon + 180) % 360) - 180)
+# ).sortby("lon")
+# vwnd = vwnd.assign_coords(
+#     lon=(((vwnd.lon + 180) % 360) - 180)
+# ).sortby("lon")
 
-# filter to relative humidity to a specific pressure level only
-uwnd850 = uwnd.sel(level=850)
-vwnd850 = vwnd.sel(level=850)
+# # filter to relative humidity to a specific pressure level only
+# uwnd850 = uwnd.sel(level=850)
+# vwnd850 = vwnd.sel(level=850)
 
-# filter to hurricane season
-uwnd850_szn = (
-    uwnd850
-    .where(uwnd850.time.dt.month.isin([6, 7, 8, 9, 10]), drop=True)
-)
-vwnd850_szn = (
-    vwnd850
-    .where(vwnd850.time.dt.month.isin([6, 7, 8, 9, 10]), drop=True)
-)
+# # filter to hurricane season
+# uwnd850_szn = (
+#     uwnd850
+#     .where(uwnd850.time.dt.month.isin([6, 7, 8, 9, 10]), drop=True)
+# )
+# vwnd850_szn = (
+#     vwnd850
+#     .where(vwnd850.time.dt.month.isin([6, 7, 8, 9, 10]), drop=True)
+# )
 
-# compute daily relative vorticity
-w = VectorWind(uwnd850_szn, vwnd850_szn)
-vort850 = w.vorticity()
+# # compute daily relative vorticity
+# w = VectorWind(uwnd850_szn, vwnd850_szn)
+# vort850 = w.vorticity()
 
-# compute planetary vorticity and add to relative (to calc absolute vort)
-omega = 7.2921e-5
-f = 2 * omega * np.sin(np.deg2rad(vort850.lat))
-abs_vort = vort850 + f
+# # compute planetary vorticity and add to relative (to calc absolute vort)
+# omega = 7.2921e-5
+# f = 2 * omega * np.sin(np.deg2rad(vort850.lat))
+# abs_vort = vort850 + f
 
-# filter to N Atlantic basin
-abs_vort = abs_vort.rio.write_crs("EPSG:4326")
-region = basins[basins["basin name"] == "N Atlantic"]
-abs_vort = abs_vort.rio.clip(region.geometry, region.crs, drop=True)
+# # filter to N Atlantic basin
+# abs_vort = abs_vort.rio.write_crs("EPSG:4326")
+# region = basins[basins["basin name"] == "N Atlantic"]
+# abs_vort = abs_vort.rio.clip(region.geometry, region.crs, drop=True)
 
 
 
-a_abs = np.abs(1e5 * abs_vort) ** 1.5
-a_clip = np.maximum(1e5 * abs_vort, 0) ** 1.5
-print("max difference:",
-      (a_abs - a_clip).max(skipna=True).item())
+# a_abs = np.abs(1e5 * abs_vort) ** 1.5
+# a_clip = np.maximum(1e5 * abs_vort, 0) ** 1.5
+# print("max difference:",
+#       (a_abs - a_clip).max(skipna=True).item())
 
-print("mean difference:",
-      (a_abs - a_clip).mean(skipna=True).item())
+# print("mean difference:",
+#       (a_abs - a_clip).mean(skipna=True).item())
 
 
 
@@ -195,55 +195,62 @@ print("mean difference:",
 # # # average to monthly
 # # abs_vort_monthly = abs_vort.resample(time="1MS").mean()
 
-print(abs_vort)
+# print(abs_vort)
 
 # # # save dataset
 # abs_vort.to_netcdf("datasets/GPI/GPI_EN_calc/abs_vort_850_daily.nc")
 
 #################################################################################################################
 
-# # rhum data
-# # combine relative humidity files (from NOAA https://downloads.psl.noaa.gov/Datasets/ncep.reanalysis2/Dailies/pressure/)
-# ds = xr.open_mfdataset(
-#     "datasets/RHUM/*.nc",
-#     combine = "by_coords",
-#     preprocess=lambda ds: ds.drop_vars("time_bnds", errors="ignore"),
-# )
+# rhum data
+# combine relative humidity files (from NOAA https://downloads.psl.noaa.gov/Datasets/ncep.reanalysis2/Dailies/pressure/)
+ds = xr.open_dataset(
+    "datasets/RHUM/post-processing/post_landmask/RHUM_1979-2025_landmasked.nc",
+    chunks={
+        "time": 365,
+        "lat": 73,
+        "lon": 144
+    }
+)
 
-# # print(ds)
+# select RHUM
+rhum = ds["rhum"]
 
-# # select the RHUM variable
-# rhum = ds["rhum"]
+# convert longitude to -180 to 180
+rhum = rhum.assign_coords(
+    lon=((rhum.lon + 180) % 360) - 180
+).sortby("lon")
 
-# # convert lon to -180-180
-# rhum = rhum.assign_coords(
-#     lon=(((rhum.lon + 180) % 360) - 180)
-# ).sortby("lon")
+# select 600 hPa
+rhum600 = rhum.sel(level=600)
 
-# # filter to relative humidity to a specific pressure level only
-# rhum600 = rhum.sel(level=600)
+# add CRS
+rhum600 = rhum600.rio.write_crs("EPSG:4326")
+rhum600 = rhum600.rio.set_spatial_dims(
+    x_dim="lon",
+    y_dim="lat"
+)
 
-# # # roll up to monthly means
-# # rhum600_monthly = rhum600.resample(time="MS").mean()
+# select North Atlantic
+region = basins[basins["basin name"] == "N Atlantic"]
 
-# # add CRS and spatial dims
-# rhum600 = rhum600.rio.write_crs("EPSG:4326")
-# rhum600 = rhum600.rio.set_spatial_dims(x_dim="lon", y_dim="lat")
+# select hurricane season
+rhum600_full = rhum600.where(
+    rhum600.time.dt.month.isin([6, 7, 8, 9, 10]),
+    drop=True
+)
 
-# # filter to N Atlantic basin
-# region = basins[basins["basin name"] == "N Atlantic"]
-
-# # filter to hurricane season
-# rhum600_full = (
-#     rhum600
-#     .where(rhum600.time.dt.month.isin([6, 7, 8, 9, 10]), drop=True)
-#     .rio.clip(region.geometry, region.crs, drop=True)
-# )
+# clip to North Atlantic
+rhum600_full = rhum600_full.rio.clip(
+    region.geometry,
+    region.crs,
+    drop=True
+)
 
 # print(rhum600_full)
 
-# # save dataset
-# rhum600_full.to_netcdf("datasets/GPI/GPI_EN_calc/rhum_600_daily.nc")
+# save to net cdf
+rhum600_full.to_netcdf("datasets/GPI/GPI_EN_calc/rhum_600_daily_landmasked.nc")
 
 #################################################################################################################
 
