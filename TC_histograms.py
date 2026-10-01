@@ -168,86 +168,191 @@ tc_filtered = tc_filtered[['TID', 'LON', 'LAT', 'ISOTIME','LON_bin', 'LAT_bin']]
 ################################################################################################################
 
 # load variable dataset
-ds = xr.open_dataset("datasets/COBE2 SST/post-processing/SST_daily_mean_1940-2024_clim_jun_oct.nc")
+ds1 = xr.open_mfdataset(
+    "datasets/COBE2 SST/daily/*.nc",
+    combine="by_coords",
+    chunks={"time": 30}
+)
+ds2 = xr.open_dataset("datasets/RHUM/post-processing/post_landmask/rhum_600_daily_landmasked.nc")
+ds3 = xr.open_dataset("datasets/u-wind/post_processing/post_landmask/shear_850_200_daily_v2_landmasked.nc")
 
 # select variable
-var = ds["sst"]
+sst = ds1["sst"]
+rhum = ds2["rhum"]
+shear = ds3["__xarray_dataarray_variable__"]
 
 # define the same 5deg bins used for TC data
 lat_edges = np.arange(0, 95, 5)
 lon_edges = np.arange(-110, 25, 5)
 
-# bin variable into 5deg cells
-var_binned = var.groupby_bins(
+
+
+
+# Convert SST longitude from 0–360 to -180–180
+sst = sst.assign_coords(
+    lon=((sst.lon + 180) % 360) - 180
+)
+
+# Sort coordinates
+sst = sst.sortby("lat")
+sst = sst.sortby("lon")
+
+# Then select the study region
+sst = sst.sel(
+    lat=slice(0, 90),
+    lon=slice(-110, 25)
+)
+
+# # Load the now-restricted SST into memory
+# print("Loading SST...")
+# sst = sst.load()
+# print("SST loaded.")
+
+# # bin variables into 5deg cells
+# sst
+sst_binned = sst.groupby_bins(
     "lat",
     lat_edges,
     labels=lat_edges[:-1]
 ).mean()
+sst_binned = sst_binned.groupby_bins(
+    "lon",
+    lon_edges,
+    labels=lon_edges[:-1]
+).mean()
 
-var_binned = var_binned.groupby_bins(
+# rhum
+rhum_binned = rhum.groupby_bins(
+    "lat",
+    lat_edges,
+    labels=lat_edges[:-1]
+).mean()
+rhum_binned = rhum_binned.groupby_bins(
+    "lon",
+    lon_edges,
+    labels=lon_edges[:-1]
+).mean()
+
+# shear
+shear_binned = shear.groupby_bins(
+    "lat",
+    lat_edges,
+    labels=lat_edges[:-1]
+).mean()
+shear_binned = shear_binned.groupby_bins(
     "lon",
     lon_edges,
     labels=lon_edges[:-1]
 ).mean()
 
 # rename to match TC dataframe
-var_binned = var_binned.rename({
+sst_binned = sst_binned.rename({
+    "lat_bins": "LAT_bin",
+    "lon_bins": "LON_bin"
+})
+rhum_binned = rhum_binned.rename({
+    "lat_bins": "LAT_bin",
+    "lon_bins": "LON_bin"
+})
+shear_binned = shear_binned.rename({
     "lat_bins": "LAT_bin",
     "lon_bins": "LON_bin"
 })
 
 # convert variable dataset to a DataFrame
-var_df = (
-    var_binned
+sst_df = (
+    sst_binned
     .to_dataframe(name="sst")
+    .reset_index()
+)
+rhum_df = (
+    rhum_binned
+    .to_dataframe(name="rhum")
+    .reset_index()
+)
+shear_df = (
+    shear_binned
+    .to_dataframe(name="shear")
     .reset_index()
 )
 
 # make sure date formats match between TC and var data
 tc_filtered["date"] = pd.to_datetime(tc_filtered["ISOTIME"]).dt.normalize()
-var_df["date"] = pd.to_datetime(var_df["time"]).dt.normalize()
+sst_df["date"] = pd.to_datetime(sst_df["time"]).dt.normalize()
+rhum_df["date"] = pd.to_datetime(rhum_df["time"]).dt.normalize()
+shear_df["date"] = pd.to_datetime(shear_df["time"]).dt.normalize()
 
-# print(tc_filtered.head())
-# print(var_df.head())
+# # # print(tc_filtered.head())
+# # print(sst_df.head())
+# # print(rhum_df.head())
+# # print(shear_df.head())
 
-# merge tables
+# merge sst, rhum, and shear onto TC table
 merged = tc_filtered.merge(
-    var_df[["date", "LAT_bin", "LON_bin", "sst"]],
+    sst_df[["date", "LAT_bin", "LON_bin", "sst"]],
+    on=["date", "LAT_bin", "LON_bin"],
+    how="left"
+)
+merged = merged.merge(
+    rhum_df[["date", "LAT_bin", "LON_bin", "rhum"]],
+    on=["date", "LAT_bin", "LON_bin"],
+    how="left"
+)
+merged = merged.merge(
+    shear_df[["date", "LAT_bin", "LON_bin", "shear"]],
     on=["date", "LAT_bin", "LON_bin"],
     how="left"
 )
 
-# print(merged.head())
+# filter date if syclops and ds don't match
+merged = merged[merged['date'].dt.year > 1980]
+
+print(merged.head())
+
+
+
+# # check
+# sst_test = sst.sel(
+#     time="1981-06-14",
+#     lat=slice(39.5, 35.5),   # descending latitude!
+#     lon=slice(-70, -66)
+# )
+
+# print(sst_test)
+# print("Number of valid values:", sst_test.notnull().sum().item())
+# print("Mean SST:", sst_test.mean().item())
+
 
 ################################################################################################################
 
-# histogram
-# keep June-October and observations with valid SST
-merged_valid = merged[
-    merged["sst"].notna()
-].copy()
+# # histogram
+# # keep June-October and observations with valid var
+# merged_valid = merged[
+#     merged["rhum"].notna()
+# ].copy()
 
-plt.figure(figsize=(8, 5))
+# plt.figure(figsize=(8, 5))
 
-plt.hist(
-    merged_valid["sst"],
-    bins=20,
-    edgecolor="black"
-)
+# plt.hist(
+#     merged_valid["rhum"],
+#     bins=20,
+#     edgecolor="black",
+#     color="green"
+# )
 
-# 26.5°C threshold
-plt.axvline(
-    26.5,
-    color="red",
-    linestyle="--",
-    linewidth=2,
-    label="26.5°C"
-)
+# # TC threshold
+# plt.axvline(
+#     70,
+#     color="gray",
+#     linestyle="--",
+#     linewidth=2,
+#     label="70%"
+# )
 
-plt.xlabel("SST (°C)")
-plt.ylabel("Number of TC observations")
-plt.title("SST Distribution Per Tropical Cyclone (1940-2025)")
+# plt.xlabel("RH (%)")
+# plt.ylabel("Number of TC observations")
+# plt.title("Relative Humidity Distribution Per Tropical Cyclone (1979-2025)")
 
-plt.tight_layout()
-plt.savefig("images/data_viz/thresholds/tc_sstTH_histogram_syclops_noaa_match.png")
-plt.show()
+# plt.tight_layout()
+# # plt.savefig("images/data_viz/thresholds/tc_sstTH_histogram_syclops_noaa_match.png")
+# plt.show()
