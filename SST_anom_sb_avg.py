@@ -117,78 +117,69 @@ sub_basins["geometry"] = sub_basins["geometry"].apply(shift_lon)
 basins["geometry"] = basins["geometry"].apply(shift_lon)
 
 #######################################################################################################
-# # read in anom net cdf
-# ds = pd.read_csv("datasets/COBE2 SST/post-processing/sst_daily_mean_bySubbasin_table_v2.csv")
+# read in anom net cdf
+ds = xr.open_dataset("datasets/u-wind/post_processing/post_landmask/shear_850_200_daily_v2_landmasked.nc")
 
-# print(ds)
+print(ds)
 
-# # get the SST variable
-# sst = ds["sst"]
+# print(ds["level"].values)
 
-# # convert to a dataframe
-# df = ds['sst'].to_dataframe(name = 'mean').reset_index()
+# get the SST variable
+var = ds["__xarray_dataarray_variable__"]
 
-# # print(df.head())
+# convert to a dataframe
+df = ds['__xarray_dataarray_variable__'].to_dataframe(name = 'mean').reset_index()
 
-# # join sub basins
-# points = gpd.GeoDataFrame(
-#     df, 
-#     geometry = gpd.points_from_xy(df.lon, df.lat),
-#     crs = "EPSG:4326"
-# )
+# print(df.head())
 
-# filtered = gpd.sjoin(
-#     points,
-#     basins[basins["basin name"] == "N Atlantic"],
-#     how = "inner",
-#     predicate = "within"
-# )
+# join sub basins
+points = gpd.GeoDataFrame(
+    df, 
+    geometry = gpd.points_from_xy(df.lon, df.lat),
+    crs = "EPSG:4326"
+)
 
-# # join sub basin name for each point
-# filtered_gdf = gpd.GeoDataFrame(
-#     filtered,
-#     geometry=gpd.points_from_xy(
-#         filtered.lon,
-#         filtered.lat
-#     ),
-#     crs=sub_basins.crs
-# )
+filtered = gpd.sjoin(
+    points,
+    basins[basins["basin name"] == "N Atlantic"],
+    how = "inner",
+    predicate = "within"
+)
 
-# filtered_gdf = filtered_gdf.drop(columns="index_right", errors="ignore")
+# join sub basin name for each point
+filtered_gdf = gpd.GeoDataFrame(
+    filtered,
+    geometry=gpd.points_from_xy(
+        filtered.lon,
+        filtered.lat
+    ),
+    crs=sub_basins.crs
+)
 
-# filtered_join = gpd.sjoin(
-#     filtered_gdf,
-#     sub_basins[['sub_basin_name', 'geometry']],
-#     how='left',
-#     predicate='within'
-# )
+filtered_gdf = filtered_gdf.drop(columns="index_right", errors="ignore")
+
+filtered_join = gpd.sjoin(
+    filtered_gdf,
+    sub_basins[['sub_basin_name', 'geometry']],
+    how='left',
+    predicate='within'
+)
 
 # print(filtered_join.head())
 
-# # # add year column for group by
-# # filtered_join['year'] = filtered_join['time'].dt.year
+# add year column for group by
+filtered_join['year'] = filtered_join['time'].dt.year
 
-# # Calculate annual mean anomaly for each sub-basin
-# df_clean = filtered_join.dropna(subset=["sub_basin_name"])
+annual_table = (
+    filtered_join.groupby(["year", "sub_basin_name"])["mean"]
+            .mean()
+            .reset_index()
+)
 
-# # trim columns
-# df_clean = df_clean[['year', 'lat', 'lon', 'mean', 'sub_basin_name']]
+print(annual_table)
 
-# # print(df_clean)
-
-# # # save to csv
-# # df_clean.to_csv("datasets/data_viz/spatial_map/sst_mean_spatial_map.csv")
-
-# annual_table = (
-#     df_clean.groupby(["year", "sub_basin_name"])["mean"]
-#             .mean()
-#             .reset_index()
-# )
-
-# # print(annual_table)
-
-# # save to csv
-# # annual_table.to_csv("datasets/COBE2 SST/post-processing/sst_annual_mean_bySubbasin_table.csv")
+# save to csv
+annual_table.to_csv("datasets/u-wind/post_processing/post_landmask/shear_annual_mean_bySubbasin_table_postLandmask.csv")
 
 #######################################################################################################
 
@@ -224,39 +215,39 @@ basins["geometry"] = basins["geometry"].apply(shift_lon)
 
 #######################################################################################################
 
-# read in anom net cdf
-ds = pd.read_csv("datasets/COBE2 SST/post-processing/sst_anom_moving_window_bySubbasin_table.csv")
+# # read in anom net cdf
+# ds = pd.read_csv("datasets/COBE2 SST/post-processing/sst_anom_moving_window_bySubbasin_table.csv")
 
-# print(ds)
+# # print(ds)
 
-# # make sure time is datetime
-# ds["year"] = pd.to_datetime(ds["year"])
+# # # make sure time is datetime
+# # ds["year"] = pd.to_datetime(ds["year"])
 
-# choose the two sub-basins
-sbs = ["Gulf (A)", "Gulf (B)"]
+# # choose the two sub-basins
+# sbs = ["Gulf (A)", "Gulf (B)"]
 
-# filter to sub basins
-ds_plot = ds[ds["sub_basin_name"].isin(sbs)]
+# # filter to sub basins
+# ds_plot = ds[ds["sub_basin_name"].isin(sbs)]
 
-# print(ds_plot)
+# # print(ds_plot)
 
-# plot
-fig, ax = plt.subplots(figsize=(12, 6))
+# # plot
+# fig, ax = plt.subplots(figsize=(12, 6))
 
-for subbasin in sbs:
-    subset = ds_plot[ds_plot["sub_basin_name"] == subbasin]
-    ax.plot(
-        subset["year"],
-        subset["mean_anom"],
-        label=subbasin
-    )
+# for subbasin in sbs:
+#     subset = ds_plot[ds_plot["sub_basin_name"] == subbasin]
+#     ax.plot(
+#         subset["year"],
+#         subset["mean_anom"],
+#         label=subbasin
+#     )
 
-ax.set_xlabel("Year")
-ax.set_ylabel("Annual SST Anomaly (°C)")
-ax.set_title("Gulf SST Anomaly Comparison")
-ax.legend()
-ax.grid(True, alpha=0.3)
+# ax.set_xlabel("Year")
+# ax.set_ylabel("Annual SST Anomaly (°C)")
+# ax.set_title("Gulf SST Anomaly Comparison")
+# ax.legend()
+# ax.grid(True, alpha=0.3)
 
-plt.tight_layout()
-plt.savefig("images/data_viz/SST/anom/SST_annualAnom_gulf_comparison.png")
-plt.show()
+# plt.tight_layout()
+# plt.savefig("images/data_viz/SST/anom/SST_annualAnom_gulf_comparison.png")
+# plt.show()

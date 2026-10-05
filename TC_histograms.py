@@ -390,78 +390,81 @@ sb = gpd.sjoin(
     predicate='intersects'
 )
 
-# print(sb)
+print(sb)
 
-# # plot histogram per sub basin
-# filter out sub basins with low TCs
-keep_subbasins = [
-    "Caribbean",
-    "Central Atlantic",
-    "Eastern Tropics",
-    "Gulf (A)",
-    "Gulf (B)",
-    "Northeastern Seaboard",
-    "Southeastern Seaboard",
-    "Subtropical Atlantic"
-]
+# # # plot histogram per sub basin
+# # filter out sub basins with low TCs
+# keep_subbasins = [
+#     "Caribbean",
+#     "Central Atlantic",
+#     "Eastern Tropics",
+#     "Gulf (A)",
+#     "Gulf (B)",
+#     "Northeastern Seaboard",
+#     "Southeastern Seaboard",
+#     "Subtropical Atlantic"
+# ]
 
-sb_filtered = sb[
-    sb["sub_basin_name"].isin(keep_subbasins)
-]
+# sb_filtered = sb[
+#     sb["sub_basin_name"].isin(keep_subbasins)
+# ]
 
-# Get the unique sub-basins
-subbasins = sorted(sb_filtered["sub_basin_name"].dropna().unique())
+# # Get the unique sub-basins
+# subbasins = sorted(sb_filtered["sub_basin_name"].dropna().unique())
 
-# Create a grid of subplots
-n = len(subbasins)
-ncols = 3
-nrows = int(np.ceil(n / ncols))
+# # Create a grid of subplots
+# n = len(subbasins)
+# ncols = 3
+# nrows = int(np.ceil(n / ncols))
 
-fig, axes = plt.subplots(
-    nrows=nrows,
-    ncols=ncols,
-    figsize=(15, 2.5 * nrows),
-    sharex=True,
-    sharey=True
-)
+# fig, axes = plt.subplots(
+#     nrows=nrows,
+#     ncols=ncols,
+#     figsize=(15, 2.5 * nrows),
+#     sharex=True,
+#     sharey=True
+# )
 
-# Make axes easy to loop over
-axes = np.atleast_1d(axes).flatten()
+# # Make axes easy to loop over
+# axes = np.atleast_1d(axes).flatten()
 
-# Make one histogram per sub-basin
-for ax, subbasin in zip(axes, subbasins):
+# # Make one histogram per sub-basin
+# for ax, subbasin in zip(axes, subbasins):
 
-    data = sb_filtered.loc[
-        sb_filtered["sub_basin_name"] == subbasin,
-        "shear"
-    ].dropna()
+#     data = sb_filtered.loc[
+#         sb_filtered["sub_basin_name"] == subbasin,
+#         "shear"
+#     ].dropna()
 
-    ax.hist(
-        data,
-        bins=20,
-        edgecolor="black",
-        color="orange",
-        alpha=0.8
-    )
+#     ax.hist(
+#         data,
+#         bins=20,
+#         edgecolor="black",
+#         color="orange",
+#         alpha=0.8
+#     )
 
-    ax.axvline(
-        10,
-        color="gray",
-        linestyle="--",
-        linewidth=2,
-        label="10 m/s"
-    )
+#     ax.axvline(
+#         10,
+#         color="gray",
+#         linestyle="--",
+#         linewidth=2,
+#         label="10 m/s"
+#     )
 
-    ax.set_title(subbasin)
-    ax.set_xlabel("Shear (m/s)")
-    ax.set_ylabel("TC Observations")
-    ax.grid(alpha=0.2)
+#     ax.set_title(subbasin)
+#     ax.set_xlabel("Shear (m/s)")
+#     ax.set_ylabel("TC Observations")
+#     ax.grid(alpha=0.2)
 
-# Hide unused subplot(s)
-for ax in axes[len(subbasins):]:
-    ax.set_visible(False)
+# # Hide unused subplot(s)
+# for ax in axes[len(subbasins):]:
+#     ax.set_visible(False)
 
-plt.suptitle("Shear Distribution Per Tropical Cyclone (1981-2025)")
-plt.tight_layout()
-plt.savefig("images/data_viz/thresholds/tc_shearTH_histogram_syclops_noaa_match_perSb.png")
-plt.show()
+# plt.suptitle("Shear Distribution Per Tropical Cyclone (1981-2025)")
+# plt.tight_layout()
+# plt.savefig("images/data_viz/thresholds/tc_shearTH_histogram_syclops_noaa_match_perSb.png")
+# plt.show()
+
+#################################################################################################################
+
