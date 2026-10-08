@@ -465,6 +465,3 @@ print(sb)
 # plt.tight_layout()
 # plt.savefig("images/data_viz/thresholds/tc_shearTH_histogram_syclops_noaa_match_perSb.png")
 # plt.show()
-
-#################################################################################################################
-
