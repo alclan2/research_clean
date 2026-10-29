@@ -127,7 +127,7 @@ sub_basins["geometry"] = sub_basins["geometry"].apply(shift_lon)
 
 # combine mslp files (from NOAA https://downloads.psl.noaa.gov/Datasets/ncep.reanalysis2/Dailies/surface/)
 ds = xr.open_mfdataset(
-    "datasets/MSLP/1979-2024/*.nc",
+    "datasets/MSLP/NOAA/*.nc",
     combine = "by_coords"
 )
 

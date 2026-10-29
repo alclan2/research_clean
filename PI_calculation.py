@@ -74,9 +74,9 @@ sub_basins["geometry"] = sub_basins["geometry"].apply(shift_lon)
 
 # load input variables
 sst_ds = xr.open_dataset("datasets/potential_intensity/input/sst_mean_1979-2025_daily.nc")
-msl_ds = xr.open_dataset("datasets/potential_intensity/input/mslp_mean_1979-2025_daily.nc")
-t_ds = xr.open_dataset("datasets/potential_intensity/input/air_temp_mean_1979-2025_daily.nc")
-r_ds = xr.open_dataset("datasets/potential_intensity/input/mixing_ration_mean_1979-2025_daily.nc")
+msl_ds = xr.open_dataset("datasets/potential_intensity/input/mslp_mean_1979-2025_daily_landmasked.nc")
+t_ds = xr.open_dataset("datasets/potential_intensity/input/air_temp_mean_1979-2025_daily_landmasked.nc")
+r_ds = xr.open_dataset("datasets/potential_intensity/input/mixing_ration_mean_1979-2025_daily_landmasked.nc")
 
 # DataArrays
 sst = sst_ds["sst"]
